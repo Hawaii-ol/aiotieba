@@ -202,6 +202,59 @@ class MySQLDB(object):
                     (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(14) NOT NULL DEFAULT '', `portrait` VARCHAR(36) UNIQUE NOT NULL, \
                     INDEX `user_name`(user_name))"
                 )
+    
+    async def _create_table_user_credit(self) -> None:
+        """
+        创建表user_credit
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    "CREATE TABLE IF NOT EXISTS `user_credit` \
+                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `violations` INT NOT NULL,\
+                    INDEX `user_name`(user_name))"
+                )
+
+    async def get_user_violations(self, user: UserInfo) -> int:
+        """
+        获取指定用户的违规次数
+
+        Arg:
+            user (UserInfo): 用户
+        Returns:
+            int: 违规次数 0表示无用户记录
+        """
+        try:
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(f"SELECT `violations` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
+        except aiomysql.Error as err:
+            LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
+            return 0
+        else:
+            if res_tuple := await cursor.fetchone():
+                return res_tuple[0]
+            return 0
+    
+    async def add_user_credit(self, user: UserInfo) -> bool:
+        """
+        添加用户信用记录（违规次数）
+
+        Arg:
+            user (UserInfo): 用户user_name
+        Returns:
+            bool: True成功 False失败
+        """
+        try:
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`violations`) VALUES(%s,%s,1) \
+                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1", (user.user_id, user.user_name))
+        except aiomysql.Error as err:
+            LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
+            return False
+        else:
+            return True
 
     async def get_userinfo(self, _id: Union[str, int]) -> UserInfo:
         """

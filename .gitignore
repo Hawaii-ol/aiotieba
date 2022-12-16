@@ -28,6 +28,11 @@
 !requirements.txt
 !pyproject.toml
 
+!antispam
+!antispam/**
+
+!cyuyan_reviewer.py
+
 *.pyproj
 *.log
 *.code-workspace
