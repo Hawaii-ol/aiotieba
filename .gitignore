@@ -32,6 +32,8 @@
 !antispam/**
 
 !cyuyan_reviewer.py
+!db_init.py
+!add_img.py
 
 *.pyproj
 *.log

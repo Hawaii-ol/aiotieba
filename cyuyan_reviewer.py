@@ -12,11 +12,13 @@ class MyReviewer(tb.Reviewer):
     def __init__(self, BDUSS_key: str, fname: str):
         super().__init__(BDUSS_key, fname)
 
-        self.thread_checkers = [self.check_thread]
-        self.post_checkers = [self.check_post, self.check_text]
-        self.comment_checkers = [self.check_comment, self.check_text]
+        self.thread_checkers = [self.check_blacklist, self.check_thread]
+        self.post_checkers = [self.check_blacklist, self.check_post]
+        self.comment_checkers = [self.check_comment]
         self.post_ad_patterns = [
             re.compile('http://8.136.190.216:8080/ca'),
+            re.compile('867056058'),
+            re.compile('1259845250'),
         ]
 
     def time_interval(self):
@@ -34,6 +36,16 @@ class MyReviewer(tb.Reviewer):
                     result = await resp.text()
                     if result == 'spam':
                         punish = True
+        # 判断违规图片
+        for img_content in thread.contents.imgs:
+            img = await self.client.get_image(img_content.src)
+            if img.size == 0:
+                continue
+            permission = await self.get_imghash(img, hamming_distance=5)
+            if permission <= -5:
+                punish = True
+                break
+        
         if punish:
             violations = await self.db.get_user_violations(thread.user)
             block_days = 1 if violations + 1 >= 3 else 0
@@ -54,8 +66,11 @@ class MyReviewer(tb.Reviewer):
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
         return
 
-    async def check_text(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
-        return
+    async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
+        # 违规超过10次的惯犯发言一律删封
+        violations = await self.db.get_user_violations(obj.user)
+        if violations >= 10:
+            return tb.Punish(tb.Ops.DELETE, block_days=1, note='散布广告')
 
 if __name__ == '__main__':
 
