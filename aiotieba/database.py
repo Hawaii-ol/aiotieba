@@ -633,8 +633,8 @@ class MySQLDB(object):
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
-                        f"REPLACE INTO `imghash_{self.fname}` VALUES (%s,%s,%s,%s,%s,DEFAULT)",
-                        (img_hash, f"X'{img_hash}'", raw_hash, permission, note),
+                        f"REPLACE INTO `imghash_{self.fname}` VALUES (%s,CONV(%s,16,10),%s,%s,%s,DEFAULT)",
+                        (img_hash, img_hash, raw_hash, permission, note),
                     )
         except aiomysql.Error as err:
             LOG.warning(f"{err}. forum={self.fname} img_hash={img_hash}")
@@ -682,7 +682,7 @@ class MySQLDB(object):
                 async with conn.cursor() as cursor:
                     if hamming_distance > 0:
                         await cursor.execute(
-                            f"SELECT `permission`, BIT_COUNT(`img_hash_uint64` ^ X'{img_hash}') AS hd FROM `imghash_{self.fname}` HAVING hd <= %s ORDER BY hd ASC", (hamming_distance,)
+                            f"SELECT `permission`, BIT_COUNT(`img_hash_uint64` ^ CONV(%s,16,10)) AS hd FROM `imghash_{self.fname}` HAVING hd <= %s ORDER BY hd ASC", (img_hash, hamming_distance)
                         )
                     else:
                         await cursor.execute(
