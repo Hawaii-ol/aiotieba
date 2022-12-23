@@ -249,7 +249,7 @@ class MySQLDB(object):
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`violations`) VALUES(%s,%s,1) \
-                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1", (user.user_id, user.user_name))
+                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1", (user.user_id, user.user_name or None))
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return False
