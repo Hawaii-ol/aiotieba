@@ -51,7 +51,7 @@ class BaseReviewer(object):
         self.client = Client(BDUSS_key)
         self.db = MySQLDB(fname)
         self._db_sqlite: SQLiteDB = None
-        self._img_hasher: "cv.img_hash.AverageHash" = None
+        self._img_hasher: "cv.img_hash.PHash" = None
         self._qrdetector: "cv.QRCodeDetector" = None
 
     async def __aenter__(self) -> "BaseReviewer":
@@ -69,9 +69,9 @@ class BaseReviewer(object):
         await self.close()
 
     @property
-    def img_hasher(self) -> "cv.img_hash.AverageHash":
+    def img_hasher(self) -> "cv.img_hash.PHash":
         if self._img_hasher is None:
-            self._img_hasher = cv.img_hash.AverageHash.create()
+            self._img_hasher = cv.img_hash.PHash.create()
         return self._img_hasher
 
     @property
