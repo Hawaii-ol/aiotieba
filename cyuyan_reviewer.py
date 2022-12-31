@@ -5,6 +5,7 @@ import re
 from typing import Optional, Union
 
 import aiotieba as tb
+from aiotieba._logger import LOG
 
 antispammer_url = 'http://127.0.0.1:14930/predict'
 
@@ -19,6 +20,7 @@ class MyReviewer(tb.Reviewer):
             re.compile('http://8.136.190.216:8080/ca'),
             re.compile('867056058'),
             re.compile('1259845250'),
+            re.compile('graves2022'),
         ]
 
     def time_interval(self):
@@ -44,6 +46,8 @@ class MyReviewer(tb.Reviewer):
             permission = await self.get_imghash(img, hamming_distance=5)
             if permission <= -5:
                 punish = True
+                phash = self.compute_imghash(img)
+                LOG.info(f'Possible spam image: src={img_content.src}, img_hash={img_content.hash}, phash={phash}')
                 break
         
         if punish:
@@ -70,7 +74,8 @@ class MyReviewer(tb.Reviewer):
         # 违规超过10次的惯犯发言一律删封
         violations = await self.db.get_user_violations(obj.user)
         if violations >= 10:
-            return tb.Punish(tb.Ops.DELETE, block_days=1, note='散布广告')
+            op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
+            return tb.Punish(op, block_days=1, note='多次散布广告，屡教不改，情节恶劣，即日起予以发言永久删封处罚。')
 
 if __name__ == '__main__':
 
