@@ -34,7 +34,7 @@
 !cyuyan_reviewer.py
 !db_init.py
 !add_img.py
-!exclude_tid.py
+!recover_tid.py
 !query_user.py
 
 *.pyproj
