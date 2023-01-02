@@ -108,6 +108,8 @@ class MySQLDB(object):
             await self._create_table_user_id()
             await self._create_table_imghash()
             await self._create_table_tid()
+        
+        await self._create_table_user_credit()
 
         await conn.ensure_closed()
 
@@ -211,7 +213,7 @@ class MySQLDB(object):
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     "CREATE TABLE IF NOT EXISTS `user_credit` \
-                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `violations` INT NOT NULL,\
+                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL,\
                     INDEX `user_name`(user_name))"
                 )
 
@@ -248,8 +250,8 @@ class MySQLDB(object):
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`violations`) VALUES(%s,%s,1) \
-                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1", (user.user_id, user.user_name or None))
+                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`) VALUES(%s,%s,%s,1) \
+                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1", (user.user_id, user.user_name or None, user.portrait))
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return False
