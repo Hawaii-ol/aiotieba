@@ -4,7 +4,7 @@ import pathlib
 import aiotieba as tb
 
 async def main(fname, tid):
-    async with tb.Reviewer('', fname) as reviewer:
+    async with tb.Reviewer('default', fname) as reviewer:
         if await reviewer.is_tid_hide(tid):
             await reviewer.client.unhide_thread(fname, tid)
         await reviewer.add_id(tid)

@@ -35,6 +35,7 @@
 !db_init.py
 !add_img.py
 !exclude_tid.py
+!query_user.py
 
 *.pyproj
 *.log

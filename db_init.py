@@ -7,4 +7,3 @@ async def db_init(fname=''):
 
 if __name__ == '__main__':
     asyncio.run(db_init('C语言'))
-
