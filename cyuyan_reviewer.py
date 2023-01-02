@@ -20,11 +20,23 @@ class MyReviewer(tb.Reviewer):
             re.compile('http://8.136.190.216:8080/ca'),
             re.compile('867056058'),
             re.compile('1259845250'),
+            re.compile('3058256485'),
             re.compile('graves2022'),
         ]
 
     def time_interval(self):
         return lambda : 300.0
+    
+    def punish_note(self, violations: int):
+        """
+        根据违规次数，返回对应的封禁理由
+        """
+        if violations < 8:
+            return '散布代写/接单/辅导/助考类广告'
+        elif 8 <= violations <= 10:
+            return f'散布代写/接单/辅导/助考类广告；请注意，你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
+        else:
+            return '无视吧规多次散布广告，屡教不改，情节恶劣，予以发言永久删封处罚。'
 
     async def check_thread(self, thread: tb.Thread) -> Optional[tb.Punish]:
         if not (user := thread.user):
@@ -51,10 +63,10 @@ class MyReviewer(tb.Reviewer):
                 break
         
         if punish:
-            violations = await self.db.get_user_violations(thread.user)
-            block_days = 1 if violations + 1 >= 3 else 0
+            violations = await self.db.get_user_violations(thread.user) + 1
+            block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(thread.user)
-            return tb.Punish(tb.Ops.HIDE, block_days=block_days, note='散布广告')
+            return tb.Punish(tb.Ops.HIDE, block_days=block_days, note=self.punish_note(violations))
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
         punish = False
@@ -62,10 +74,10 @@ class MyReviewer(tb.Reviewer):
             if pattern.search(post.text):
                 punish = True
         if punish:
-            violations = await self.db.get_user_violations(post.user)
-            block_days = 1 if violations + 1 >= 3 else 0
+            violations = await self.db.get_user_violations(post.user) + 1
+            block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(post.user)
-            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note='散布广告')
+            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=self.punish_note(violations))
 
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
         return
@@ -73,9 +85,9 @@ class MyReviewer(tb.Reviewer):
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         # 违规超过10次的惯犯发言一律删封
         violations = await self.db.get_user_violations(obj.user)
-        if violations >= 10:
+        if violations > 10:
             op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
-            return tb.Punish(op, block_days=1, note='多次散布广告，屡教不改，情节恶劣，即日起予以发言永久删封处罚。')
+            return tb.Punish(op, block_days=1, note=self.punish_note(violations))
 
 if __name__ == '__main__':
 
