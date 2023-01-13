@@ -9,7 +9,7 @@ import wsproto
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 
-from .. import _logging as LOG
+from .._logging import get_logger as LOG
 from . import (
     add_post,
     agree,
@@ -444,7 +444,7 @@ class Client(object):
                 self._tbs = tbs
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             self._tbs = ''
             return False
 
@@ -474,7 +474,7 @@ class Client(object):
             ForumInfoCache.add_forum(fname, fid)
 
         except Exception as err:
-            LOG.warning(f"{err}. fname={fname}")
+            LOG().warning(f"{err}. fname={fname}")
             fid = 0
 
         return fid
@@ -513,7 +513,7 @@ class Client(object):
         """
 
         if not _id:
-            LOG.warning("Null input")
+            LOG().warning("Null input")
             return UserInfo(_id)
 
         if isinstance(_id, int):
@@ -572,7 +572,7 @@ class Client(object):
             user = get_uinfo_panel.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={name_or_portrait}")
+            LOG().warning(f"{err}. user={name_or_portrait}")
             user = get_uinfo_panel.UserInfo_panel()._init_null()
 
         return user
@@ -595,7 +595,7 @@ class Client(object):
             user._user_name = user_name
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user_name}")
+            LOG().warning(f"{err}. user={user_name}")
             user = get_uinfo_user_json.UserInfo_json()._init_null()
 
         return user
@@ -618,7 +618,7 @@ class Client(object):
             user = get_uinfo_getuserinfo_app.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user_id}")
+            LOG().warning(f"{err}. user={user_id}")
             user = get_uinfo_getuserinfo_app.UserInfo_guinfo_app()._init_null()
 
         return user
@@ -644,7 +644,7 @@ class Client(object):
             user._user_id = user_id
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user_id}")
+            LOG().warning(f"{err}. user={user_id}")
             user = get_uinfo_getUserInfo_web.UserInfo_guinfo_web()._init_null()
 
         return user
@@ -670,7 +670,7 @@ class Client(object):
             user = tieba_uid2user_info.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tieba_uid={tieba_uid}")
+            LOG().warning(f"{err}. tieba_uid={tieba_uid}")
             user = tieba_uid2user_info.UserInfo_TUid()._init_null()
 
         return user
@@ -710,7 +710,7 @@ class Client(object):
             threads = get_threads.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             threads = get_threads.Threads()._init_null()
 
         return threads
@@ -765,7 +765,7 @@ class Client(object):
             posts = get_posts.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid}")
+            LOG().warning(f"{err}. tid={tid}")
             posts = get_posts.Posts()._init_null()
 
         return posts
@@ -798,7 +798,7 @@ class Client(object):
             comments = get_comments.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid} pid={pid}")
+            LOG().warning(f"{err}. tid={tid} pid={pid}")
             comments = get_comments.Comments()._init_null()
 
         return comments
@@ -839,7 +839,7 @@ class Client(object):
             searches = search_post.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             searches = search_post.Searches()._init_null()
 
         return searches
@@ -863,7 +863,7 @@ class Client(object):
             forum = get_forum_detail.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             forum = get_forum_detail.Forum_detail()._init_null()
 
         return forum
@@ -889,7 +889,7 @@ class Client(object):
             bawu_dict = get_bawu_info.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             bawu_dict = {}
 
         return bawu_dict
@@ -913,7 +913,7 @@ class Client(object):
             tab_map = get_tab_map.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             tab_map = {}
 
         return tab_map
@@ -938,7 +938,7 @@ class Client(object):
             rank_users = get_rank_users.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             rank_users = get_rank_users.RankUsers()._init_null()
 
         return rank_users
@@ -963,7 +963,7 @@ class Client(object):
             member_users = get_member_users.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             member_users = get_member_users.MemberUsers()._init_null()
 
         return member_users
@@ -987,7 +987,7 @@ class Client(object):
             square_forums = get_square_forums.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             square_forums = get_square_forums.SquareForums()._init_null()
 
         return square_forums
@@ -1017,7 +1017,7 @@ class Client(object):
             user, threads = get_homepage.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             user = get_homepage.UserInfo_home()._init_null()
             threads = []
 
@@ -1052,7 +1052,7 @@ class Client(object):
             stat = get_statistics.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             stat = {field_name: [] for field_name in get_statistics.field_names}
 
         return stat
@@ -1083,7 +1083,7 @@ class Client(object):
             follow_forums = get_follow_forums.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             follow_forums = get_follow_forums.FollowForums()._init_null()
 
         return follow_forums
@@ -1107,7 +1107,7 @@ class Client(object):
             status = get_recom_status.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             status = get_recom_status.RecomStatus()._init_null()
 
         return status
@@ -1154,10 +1154,10 @@ class Client(object):
             block.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} user={user} day={day}")
+            LOG().warning(f"{err}. forum={fname_or_fid} user={user} day={day}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} user={user} day={day}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} user={user} day={day}")
         return True
 
     async def unblock(self, fname_or_fid: Union[str, int], /, _id: Union[str, int]) -> bool:
@@ -1192,10 +1192,10 @@ class Client(object):
             unblock.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname} user={user}")
+            LOG().warning(f"{err}. forum={fname} user={user}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname} user={user}")
+        LOG().info(f"Succeeded. forum={fname} user={user}")
         return True
 
     async def hide_thread(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1219,10 +1219,10 @@ class Client(object):
             del_thread.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def del_thread(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1246,10 +1246,10 @@ class Client(object):
             del_thread.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def del_threads(self, fname_or_fid: Union[str, int], /, tids: List[int], *, block: bool = False) -> bool:
@@ -1274,10 +1274,10 @@ class Client(object):
             del_threads.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tids={tids}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tids={tids}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tids={tids}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tids={tids}")
         return True
 
     async def del_post(self, fname_or_fid: Union[str, int], /, pid: int) -> bool:
@@ -1301,10 +1301,10 @@ class Client(object):
             del_post.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} pid={pid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} pid={pid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} pid={pid}")
         return True
 
     async def del_posts(self, fname_or_fid: Union[str, int], /, pids: List[int], *, block: bool = False) -> bool:
@@ -1329,10 +1329,10 @@ class Client(object):
             del_posts.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} pids={pids}")
+            LOG().warning(f"{err}. forum={fname_or_fid} pids={pids}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} pids={pids}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} pids={pids}")
         return True
 
     async def unhide_thread(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1351,10 +1351,10 @@ class Client(object):
             await self.recover(fname_or_fid, tid=tid, is_hide=True)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def recover_thread(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1373,10 +1373,10 @@ class Client(object):
             await self.recover(fname_or_fid, tid=tid, is_hide=False)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def recover_post(self, fname_or_fid: Union[str, int], /, pid: int) -> bool:
@@ -1395,10 +1395,10 @@ class Client(object):
             await self.recover(fname_or_fid, pid=pid, is_hide=False)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} pid={pid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} pid={pid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} pid={pid}")
         return True
 
     async def recover(
@@ -1459,10 +1459,10 @@ class Client(object):
             move.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def recommend(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1485,10 +1485,10 @@ class Client(object):
             recommend.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def good(self, fname_or_fid: Union[str, int], /, tid: int, *, cname: str = '') -> bool:
@@ -1520,10 +1520,10 @@ class Client(object):
             good.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} cname={cname}")
+            LOG().warning(f"{err}. forum={fname_or_fid} cname={cname}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def ungood(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1553,10 +1553,10 @@ class Client(object):
             ungood.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def _get_cid(self, fname_or_fid: Union[str, int], /, cname: str) -> int:
@@ -1585,7 +1585,7 @@ class Client(object):
                     break
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname} cname={cname}")
+            LOG().warning(f"{err}. forum={fname} cname={cname}")
             cid = 0
 
         return cid
@@ -1617,10 +1617,10 @@ class Client(object):
             top.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def untop(self, fname_or_fid: Union[str, int], /, tid: int) -> bool:
@@ -1650,10 +1650,10 @@ class Client(object):
             untop.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid} tid={tid}")
+            LOG().warning(f"{err}. forum={fname_or_fid} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid} tid={tid}")
         return True
 
     async def get_recovers(
@@ -1684,7 +1684,7 @@ class Client(object):
             recovers = get_recovers.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             recovers = get_recovers.Recovers()._init_null()
 
         return recovers
@@ -1715,7 +1715,7 @@ class Client(object):
             recovers = get_blocks.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             recovers = get_blocks.Blocks()._init_null()
 
         return recovers
@@ -1742,7 +1742,7 @@ class Client(object):
             blacklist_users = get_blacklist_users.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             blacklist_users = get_blacklist_users.BlacklistUsers()._init_null()
 
         return blacklist_users
@@ -1774,10 +1774,10 @@ class Client(object):
             blacklist_add.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname} user={user.user_id}")
+            LOG().warning(f"{err}. forum={fname} user={user.user_id}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname} user={user.user_id}")
+        LOG().info(f"Succeeded. forum={fname} user={user.user_id}")
         return True
 
     async def blacklist_del(self, fname_or_fid: Union[str, int], /, _id: Union[str, int]) -> bool:
@@ -1807,10 +1807,10 @@ class Client(object):
             blacklist_del.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname} user={user.user_id}")
+            LOG().warning(f"{err}. forum={fname} user={user.user_id}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname} user={user.user_id}")
+        LOG().info(f"Succeeded. forum={fname} user={user.user_id}")
         return True
 
     async def get_unblock_appeals(
@@ -1843,7 +1843,7 @@ class Client(object):
             appeals = get_unblock_appeals.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             appeals = get_unblock_appeals.Appeals()._init_null()
 
         return appeals
@@ -1878,10 +1878,10 @@ class Client(object):
             handle_unblock_appeals.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname}")
+        LOG().info(f"Succeeded. forum={fname}")
         return True
 
     async def get_image(self, img_url: str) -> "np.ndarray":
@@ -1901,7 +1901,7 @@ class Client(object):
             image = get_image.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. url={img_url}")
+            LOG().warning(f"{err}. url={img_url}")
             image = np.empty(0, dtype=np.uint8)
 
         return image
@@ -1924,7 +1924,7 @@ class Client(object):
             image = get_image.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. raw_hash={raw_hash} size={size}")
+            LOG().warning(f"{err}. raw_hash={raw_hash} size={size}")
             image = np.empty(0, dtype=np.uint8)
 
         return image
@@ -1952,7 +1952,7 @@ class Client(object):
             image = get_image.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             image = np.empty(0, dtype=np.uint8)
 
         return image
@@ -1974,7 +1974,7 @@ class Client(object):
             self._user._tieba_uid = user._tieba_uid
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             return False
 
         return True
@@ -2000,7 +2000,7 @@ class Client(object):
             msg = get_newmsg.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             msg = {
                 'fans': False,
                 'replyme': False,
@@ -2030,7 +2030,7 @@ class Client(object):
             replys = get_replys.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             replys = get_replys.Replys()._init_null()
 
         return replys
@@ -2052,7 +2052,7 @@ class Client(object):
             ats = get_ats.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             ats = get_ats.Ats()._init_null()
 
         return ats
@@ -2078,7 +2078,7 @@ class Client(object):
             threads = get_threads.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             threads = []
 
         return threads
@@ -2104,7 +2104,7 @@ class Client(object):
             threads = get_threads.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             threads = []
 
         return threads
@@ -2130,7 +2130,7 @@ class Client(object):
             uposts_list = get_posts.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             uposts_list = []
 
         return uposts_list
@@ -2160,7 +2160,7 @@ class Client(object):
             threads = get_threads.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             threads = []
 
         return threads
@@ -2191,7 +2191,7 @@ class Client(object):
             fans = get_fans.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             fans = get_fans.Fans()._init_null()
 
         return fans
@@ -2222,7 +2222,7 @@ class Client(object):
             follows = get_follows.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             follows = get_follows.Follows()._init_null()
 
         return follows
@@ -2247,7 +2247,7 @@ class Client(object):
             self_follow_forums = get_self_follow_forums.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             self_follow_forums = get_self_follow_forums.SelfFollowForums()._init_null()
 
         return self_follow_forums
@@ -2270,7 +2270,7 @@ class Client(object):
             dislike_forums = get_dislike_forums.parse_response(response)
 
         except Exception as err:
-            LOG.warning(err)
+            LOG().warning(err)
             dislike_forums = get_dislike_forums.DislikeForums()._init_null()
 
         return dislike_forums
@@ -2299,10 +2299,10 @@ class Client(object):
             agree.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid} pid={pid}")
+            LOG().warning(f"{err}. tid={tid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. tid={tid} pid={pid}")
+        LOG().info(f"Succeeded. tid={tid} pid={pid}")
         return True
 
     async def unagree(self, tid: int, pid: int = 0) -> bool:
@@ -2325,10 +2325,10 @@ class Client(object):
             agree.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid} pid={pid}")
+            LOG().warning(f"{err}. tid={tid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. tid={tid} pid={pid}")
+        LOG().info(f"Succeeded. tid={tid} pid={pid}")
         return True
 
     async def disagree(self, tid: int, pid: int = 0) -> bool:
@@ -2351,10 +2351,10 @@ class Client(object):
             agree.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid} pid={pid}")
+            LOG().warning(f"{err}. tid={tid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. tid={tid} pid={pid}")
+        LOG().info(f"Succeeded. tid={tid} pid={pid}")
         return True
 
     async def undisagree(self, tid: int, pid: int = 0) -> bool:
@@ -2377,10 +2377,10 @@ class Client(object):
             agree.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid} pid={pid}")
+            LOG().warning(f"{err}. tid={tid} pid={pid}")
             return False
 
-        LOG.info(f"Succeeded. tid={tid} pid={pid}")
+        LOG().info(f"Succeeded. tid={tid} pid={pid}")
         return True
 
     async def remove_fan(self, _id: Union[str, int]):
@@ -2407,10 +2407,10 @@ class Client(object):
             remove_fan.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             return False
 
-        LOG.info(f"Succeeded. user={user}")
+        LOG().info(f"Succeeded. user={user}")
         return True
 
     async def follow_user(self, _id: Union[str, int]):
@@ -2437,10 +2437,10 @@ class Client(object):
             follow_user.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             return False
 
-        LOG.info(f"Succeeded. user={user}")
+        LOG().info(f"Succeeded. user={user}")
         return True
 
     async def unfollow_user(self, _id: Union[str, int]):
@@ -2467,10 +2467,10 @@ class Client(object):
             unfollow_user.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             return False
 
-        LOG.info(f"Succeeded. user={user}")
+        LOG().info(f"Succeeded. user={user}")
         return True
 
     async def follow_forum(self, fname_or_fid: Union[str, int]) -> bool:
@@ -2493,10 +2493,10 @@ class Client(object):
             follow_forum.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid}")
         return True
 
     async def unfollow_forum(self, fname_or_fid: Union[str, int]) -> bool:
@@ -2519,10 +2519,10 @@ class Client(object):
             unfollow_forum.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid}")
         return True
 
     async def dislike_forum(self, fname_or_fid: Union[str, int]) -> bool:
@@ -2544,10 +2544,10 @@ class Client(object):
             dislike_forum.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid}")
         return True
 
     async def undislike_forum(self, fname_or_fid: Union[str, int]) -> bool:
@@ -2569,10 +2569,10 @@ class Client(object):
             undislike_forum.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname_or_fid}")
+            LOG().warning(f"{err}. forum={fname_or_fid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname_or_fid}")
+        LOG().info(f"Succeeded. forum={fname_or_fid}")
         return True
 
     async def set_privacy(self, fname_or_fid: Union[str, int], /, tid: int, pid: int, *, hide: bool = True) -> bool:
@@ -2597,10 +2597,10 @@ class Client(object):
             set_privacy.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. tid={tid}")
+            LOG().warning(f"{err}. tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. tid={tid}")
+        LOG().info(f"Succeeded. tid={tid}")
         return True
 
     async def sign_forum(self, fname_or_fid: Union[str, int]) -> bool:
@@ -2623,15 +2623,15 @@ class Client(object):
             sign_forum.parse_response(response)
 
         except TiebaServerError as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             if err.code in [160002, 340006]:
                 # 已经签过或吧被屏蔽
                 return True
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname}")
+            LOG().warning(f"{err}. forum={fname}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname}")
+        LOG().info(f"Succeeded. forum={fname}")
         return True
 
     async def add_post(self, fname_or_fid: Union[str, int], /, tid: int, content: str) -> bool:
@@ -2667,10 +2667,10 @@ class Client(object):
             add_post.parse_response(response)
 
         except Exception as err:
-            LOG.warning(f"{err}. forum={fname} tid={tid}")
+            LOG().warning(f"{err}. forum={fname} tid={tid}")
             return False
 
-        LOG.info(f"Succeeded. forum={fname} tid={tid}")
+        LOG().info(f"Succeeded. forum={fname} tid={tid}")
         return True
 
     async def send_msg(self, _id: Union[str, int], content: str) -> bool:
@@ -2698,8 +2698,8 @@ class Client(object):
             send_msg.parse_proto(resp)
 
         except Exception as err:
-            LOG.warning(f"{err}. user={user}")
+            LOG().warning(f"{err}. user={user}")
             return False
 
-        LOG.info(f"Succeeded. user={user}")
+        LOG().info(f"Succeeded. user={user}")
         return True

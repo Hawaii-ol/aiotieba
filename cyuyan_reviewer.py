@@ -7,7 +7,7 @@ from typing import Optional, Union, List
 from enum import Enum
 
 import aiotieba as tb
-from aiotieba import _logging as LOG
+from aiotieba._logging import get_logger as LOG
 from aiotieba.database import FraudTypes
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
@@ -137,7 +137,7 @@ class MyReviewer(tb.Reviewer):
                 obj.user.gender != 1 and
                 obj.user.ip in ('内蒙古', '上海')
             ):
-                LOG.info(f'特征检测: {repr(obj.user)}')
+                LOG().info(f'特征检测: {repr(obj.user)}')
                 punish = True
                 fraud_type = FraudTypes.CONFIRMED_FRAUD
                 break
@@ -173,7 +173,7 @@ class MyReviewer(tb.Reviewer):
                 for p in self.qrcode_patterns:
                     if p.search(qrcode):
                         punish = True
-                        LOG.info(f'Possible spam QR code: src={img_content.origin_src}, content={qrcode}')
+                        LOG().info(f'Possible spam QR code: src={img_content.origin_src}, content={qrcode}')
                         break
                 if punish:
                     break
@@ -182,7 +182,7 @@ class MyReviewer(tb.Reviewer):
             if permission <= -5:
                 punish = True
                 phash = self.compute_imghash(img)
-                LOG.info(f'Possible spam image: src={img_content.origin_src}, img_hash={img_content.hash}, phash={phash}')
+                LOG().info(f'Possible spam image: src={img_content.origin_src}, img_hash={img_content.hash}, phash={phash}')
                 break
         if punish:
             uc = await self.db.get_user_credit(obj.user)
