@@ -36,6 +36,7 @@
 !add_img.py
 !recover_tid.py
 !query_user.py
+!block_user.py
 
 *.pyproj
 *.log

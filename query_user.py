@@ -19,4 +19,5 @@ async def main():
         print(f'user_name: {user.user_name}')
         print(f'nick_name: {user.nick_name}')
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())
