@@ -24,6 +24,10 @@ class MyReviewer(tb.Reviewer):
             re.compile('❻❼❾❸❹❾❻'),
             re.compile('昆鹏发卡'),
         ]
+        self.qrcode_patterns = [
+            re.compile('weixin.qq.com'),
+            re.compile('qm.qq.com'),
+        ]
 
     def time_interval(self):
         """
@@ -61,6 +65,7 @@ class MyReviewer(tb.Reviewer):
         for pattern in self.post_ad_patterns:
             if pattern.search(post.text):
                 punish = True
+                break
         if punish:
             violations = await self.db.get_user_violations(post.user) + 1
             block_days = 1 if violations >= 3 else 0
@@ -77,6 +82,17 @@ class MyReviewer(tb.Reviewer):
             img = await self.client.get_image(img_content.origin_src)
             if img.size == 0:
                 continue
+            # 检测二维码
+            if self.has_QRcode(img):
+                qrcode = self.decode_QRcode(img)
+                for p in self.qrcode_patterns:
+                    if p.search(qrcode):
+                        punish = True
+                        LOG.info(f'Possible spam QR code: src={img_content.origin_src}, content={qrcode}')
+                        break
+                if punish:
+                    break
+            # 比对违规图片库
             permission = await self.get_imghash(img, hamming_dist=5)
             if permission <= -5:
                 punish = True
