@@ -1,12 +1,13 @@
 import emoji
 import jieba
 import os
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
 dataset_dir = os.path.join(os.path.dirname(__file__), 'dataset')
 
-class AntiSpammer:
+class BaseLearner:
     def __init__(self) -> None:
         with open(os.path.join(dataset_dir, 'stopwords.txt'), encoding='utf-8') as fstop,\
             open(os.path.join(dataset_dir, 'cyuyan_dict.txt'), encoding='utf-8') as fdict:
@@ -16,9 +17,9 @@ class AntiSpammer:
             self.vec = TfidfVectorizer()
             self.trained = False
 
-    def train(self):
-        with open(os.path.join(dataset_dir, 'ham.txt'), encoding='utf-8') as fham,\
-            open(os.path.join(dataset_dir, 'spam.txt'), encoding='utf-8') as fspam:
+    def train(self, hamfile, spamfile):
+        with open(hamfile, encoding='utf-8') as fham,\
+            open(spamfile, encoding='utf-8') as fspam:
             cuts = (jieba.cut(line.lower().strip()) for line in fham)
             words = (filter(lambda x: x not in self.stopwords, cut) for cut in cuts)
             text_hams = [','.join(w) for w in words]
@@ -46,6 +47,32 @@ class AntiSpammer:
         y_text = self.model.predict(x_test)
         return y_text[0]
 
+class AntiSpammer(BaseLearner):
+    def __init__(self) -> None:
+        return super().__init__()
+
+    def train(self):
+        hamfile = os.path.join(dataset_dir, 'ham.txt')
+        spamfile = os.path.join(dataset_dir, 'spam.txt')
+        return super().train(hamfile, spamfile)
+
+class AntiFraud(BaseLearner):
+    def __init__(self) -> None:
+        return super().__init__()
+    
+    def train(self):
+        hamfile = os.path.join(dataset_dir, 'fraud_ham.txt')
+        spamfile = os.path.join(dataset_dir, 'fraud_spam.txt')
+        return super().train(hamfile, spamfile)
+    
+    def predict(self, text : str):
+        # 正则检测qq号
+        if len(text) < 20 and re.search(r'\d{9,10}', text):
+            return 'spam'
+        return super().predict(text)
+
 if __name__ == '__main__':
     _aspam = AntiSpammer()
     _aspam.train()
+    _afraud = AntiFraud()
+    _afraud.train()

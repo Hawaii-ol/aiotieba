@@ -213,45 +213,49 @@ class MySQLDB(object):
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     "CREATE TABLE IF NOT EXISTS `user_credit` \
-                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `last_record` NOT NULL DEFAULT CURRENT_TIMESTAMP\
+                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `is_fraud` TINYINT(1) NOT NULL DEFAULT 0, `last_record` NOT NULL DEFAULT CURRENT_TIMESTAMP\
                     INDEX `user_name`(user_name))"
                 )
 
-    async def get_user_violations(self, user: UserInfo) -> int:
+    async def get_user_credit(self, user: UserInfo) -> Tuple[int, bool]:
         """
-        获取指定用户的违规次数
+        获取指定用户的信用记录(违规次数和诈骗记录)
 
         Arg:
             user (UserInfo): 用户
         Returns:
-            int: 违规次数 0表示无用户记录
+            (int, bool): (违规次数, 是否涉嫌诈骗)
+            返回None表示无用户记录
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"SELECT `violations` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
+                    await cursor.execute(f"SELECT `violations`, `is_fraud` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
-            return 0
+            return None
         else:
             if res_tuple := await cursor.fetchone():
-                return res_tuple[0]
-            return 0
+                return (res_tuple[0], bool(res_tuple[1]))
+            return None
     
-    async def add_user_credit(self, user: UserInfo) -> bool:
+    async def add_user_credit(self, user: UserInfo, is_fraud=False) -> bool:
         """
-        添加用户信用记录（违规次数）
+        添加用户信用记录
 
         Arg:
             user (UserInfo): 用户user_name
+            is_fraud: 是否涉嫌诈骗
         Returns:
             bool: True成功 False失败
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`) VALUES(%s,%s,%s,1) \
-                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1, `last_record`=CURRENT_TIMESTAMP()", (user.user_id, user.user_name or None, user.portrait))
+                    sql_fraud = '`fraud`=1, ' if is_fraud else ''
+                    sql_update = f'`violations`=`violations`+1, {sql_fraud}`last_record`=CURRENT_TIMESTAMP()'
+                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`is_fraud`) VALUES(%s,%s,%s,1,%s) \
+                        ON DUPLICATE KEY UPDATE {sql_update}", (user.user_id, user.user_name or None, user.portrait, int(is_fraud)))
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return False

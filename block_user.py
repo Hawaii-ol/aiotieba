@@ -1,17 +1,7 @@
 import sys
 import asyncio
 import aiotieba as tb
-
-def punish_note(violations: int):
-    """
-    根据违规次数，返回对应的封禁理由
-    """
-    if violations < 8:
-        return '散布代写/接单/辅导类主题帖，或推广网站/产品/群聊等广告行为'
-    elif 8 <= violations <= 10:
-        return f'散布代写/接单/辅导类主题帖，或推广网站/产品/群聊等广告行为；请注意，你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
-    else:
-        return '无视吧规多次散布广告，屡教不改，情节恶劣，予以发言永久删封处罚。'
+from cyuyan_reviewer import FraudTypes, punish_note
 
 async def main(fname):
     async with tb.Reviewer('default', fname) as reviewer:
@@ -24,10 +14,28 @@ async def main(fname):
         except ValueError:
             pass
         user = await reviewer.client.get_user_info(credential)
-        violations = await reviewer.db.get_user_violations(user) + 1
-        note = punish_note(violations)
-        await reviewer.db.add_user_credit(user)
-        await reviewer.block(user.portrait, day=1, reason=note)
+        print('请选择封禁原因：')
+        print('1.广告')
+        print('2.疑似诈骗')
+        print('3.举报核实诈骗')
+        reason = int(input())
+        if reason in [1, 2, 3]:
+            if credit := await reviewer.db.get_user_credit(user):
+                violations = credit[0] + 1
+            else:
+                violations = 1
+            if reason == 1:
+                fraud_type = FraudTypes.NOT_FRAUD
+            elif reason == 2:
+                fraud_type = FraudTypes.SUSPECTED_FRAUD
+            else:
+                fraud_type = FraudTypes.CONFIRMED_FRAUD
+            note = punish_note(violations, fraud_type)
+            print(note)
+            await reviewer.db.add_user_credit(user, fraud_type == FraudTypes.CONFIRMED_FRAUD)
+            await reviewer.block(user.portrait, day=1, reason=note)
+        else:
+            print('无效选项')
 
 if __name__ == '__main__':
     asyncio.run(main('C语言'))
