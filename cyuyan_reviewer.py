@@ -66,6 +66,7 @@ class MyReviewer(tb.Reviewer):
         # 部分例外贴的tid（置顶贴、吧务公告、诈骗举报贴和申诉贴等）
         self.exclude_tids = [
             5550750195, # c语言吧新人引导，入门必看！
+            8442248933, # 关于打击诈骗活动的征集意见
         ]
 
     def time_interval(self):
@@ -121,7 +122,7 @@ class MyReviewer(tb.Reviewer):
         # 防止误删
         if obj.user.is_bawu or obj.tid in self.exclude_tids:
             return
-        if isinstance(obj, tb.Post) and tb.Post(obj).is_thread_author:
+        if isinstance(obj, tb.Post) and obj.is_thread_author:
             return
         for pattern in self.fraud_patterns:
             # 命中诈骗号码黑名单，则确定为诈骗

@@ -252,7 +252,7 @@ class MySQLDB(object):
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    sql_fraud = '`fraud`=1, ' if is_fraud else ''
+                    sql_fraud = '`is_fraud`=1, ' if is_fraud else ''
                     sql_update = f'`violations`=`violations`+1, {sql_fraud}`last_record`=CURRENT_TIMESTAMP()'
                     await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`is_fraud`) VALUES(%s,%s,%s,1,%s) \
                         ON DUPLICATE KEY UPDATE {sql_update}", (user.user_id, user.user_name or None, user.portrait, int(is_fraud)))
