@@ -32,10 +32,10 @@ def punish_note(violations: int, fruad_type: FraudTypes):
     if fruad_type == FraudTypes.SUSPECTED_FRAUD:
         return '疑似诈骗行为，为规避风险删封处理。即日起只允许4级及以上的账号回复接单，4级以下账号接单一律视为涉嫌诈骗，删封处理。'
     elif fruad_type == FraudTypes.CONFIRMED_FRAUD:
-        return '经举报核实，此账号存在诈骗行为，予以发言永久删封处罚。如有异议，可向吧务组申诉，并提交相关证据澄清。'
-    if violations < 8:
+        return '经举报核实，此账号或相关账号存在诈骗行为，予以发言永久删封处罚。如有异议，可向吧务组申诉，并提交相关证据澄清。'
+    if violations < 5:
         return '散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为'
-    elif 8 <= violations <= 10:
+    elif 5 <= violations < 8:
         return f'散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为；请注意，你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
     else:
         return '无视吧规多次散布广告，屡教不改，情节恶劣，予以发言永久删封处罚。'
@@ -177,15 +177,15 @@ class MyReviewer(tb.Reviewer):
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """
             以下用户发言一律删封：
-            1.违规超过10次
-            2.涉嫌诈骗
+            1.违规达8次以上
+            2.经举报核实诈骗
         """
         # 给黑名单用户在指定贴下申诉的机会
         if obj.tid in self.exclude_tids:
             return
         if credit := await self.db.get_user_credit(obj.user):
             violations, is_fraud = credit
-            if violations > 10 or is_fraud:
+            if violations >= 8 or is_fraud:
                 op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
                 await self.db.add_user_credit(obj.user, is_fraud)
                 return tb.Punish(op, block_days=1, note=punish_note(violations, FraudTypes.CONFIRMED_FRAUD if is_fraud else FraudTypes.NOT_FRAUD))
