@@ -32,6 +32,7 @@ class Comment(Container):
         agree (int): 点赞数
         disagree (int): 点踩数
         create_time (int): 创建时间
+        is_thread_author (bool): 是否楼主
     """
 
     __slots__ = [
@@ -40,12 +41,14 @@ class Comment(Container):
         '_agree',
         '_disagree',
         '_create_time',
+        '_is_thread_author',
     ]
 
     def __init__(self, _raw_data: Optional[TypeMessage] = None) -> None:
         super(Comment, self).__init__()
 
         self._contents = None
+        self._is_thread_author = False
 
         if _raw_data:
             self._contents = _raw_data.content
@@ -154,6 +157,14 @@ class Comment(Container):
         """
 
         return self._create_time
+    
+    @property
+    def is_thread_author(self) -> bool:
+        """
+        是否楼主
+        """
+
+        return self._is_thread_author
 
 
 class Post(Container):
@@ -411,6 +422,7 @@ class Comments(Containers[Comment]):
                     comment._fid = self.forum.fid
                     comment._fname = self.forum.fname
                     comment._tid = self.thread.tid
+                    comment._is_thread_author = self.thread.author_id == comment.author_id
 
             else:
                 self._objs = []

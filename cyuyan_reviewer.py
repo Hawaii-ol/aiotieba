@@ -120,9 +120,7 @@ class MyReviewer(tb.Reviewer):
     async def check_fraud(self, obj: Union[tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """检查回复是否涉嫌诈骗"""
         # 防止误删
-        if obj.user.is_bawu or obj.tid in self.exclude_tids:
-            return
-        if isinstance(obj, tb.Post) and obj.is_thread_author:
+        if obj.user.is_bawu or obj.tid in self.exclude_tids or obj.is_thread_author:
             return
         for pattern in self.fraud_patterns:
             # 命中诈骗号码黑名单，则确定为诈骗
