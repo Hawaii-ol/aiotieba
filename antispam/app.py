@@ -22,4 +22,6 @@ def api_predict_ads():
 def api_predict_fraud():
     text = request.form.get('text')
     result = antifraud.predict(text)
+    if result == 'spam':
+        print("Possible fraud: " + text)
     return result

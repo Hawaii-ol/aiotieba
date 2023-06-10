@@ -19,7 +19,7 @@ class FraudTypes(Enum):
     # 已核实诈骗
     CONFIRMED_FRAUD = 2
 
-def punish_note(violations: int, fruad_type: FraudTypes):
+def punish_note(violations: int, fraud_type: FraudTypes):
     """
     根据违规记录，返回对应的封禁理由
     Args:
@@ -29,16 +29,16 @@ def punish_note(violations: int, fruad_type: FraudTypes):
             FraudTypes.SUSPECTED_FRAUD: 疑似诈骗
             FraudTypes.CONFIRMED_FRAUD: 已核实诈骗
     """
-    if fruad_type == FraudTypes.SUSPECTED_FRAUD:
-        return '疑似诈骗行为，为规避风险删封处理。即日起只允许4级及以上的账号回复接单，4级以下账号接单一律视为涉嫌诈骗，删封处理。'
-    elif fruad_type == FraudTypes.CONFIRMED_FRAUD:
+    if fraud_type == FraudTypes.SUSPECTED_FRAUD:
+        return '风控检测疑似诈骗账号，为避免风险删封处理。'
+    elif fraud_type == FraudTypes.CONFIRMED_FRAUD:
         return '经举报核实，此账号或相关账号存在诈骗行为，予以发言永久删封处罚。如有异议，可向吧务组申诉，并提交相关证据澄清。'
     if violations < 5:
         return '散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为'
     elif 5 <= violations < 8:
         return f'散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为；请注意，你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
     else:
-        return '无视吧规多次散布广告，屡教不改，情节恶劣，予以发言永久删封处罚。'
+        return '多次散布广告或群发垃圾信息，无视吧规，屡教不改，予以发言永久删封处罚。'
 
 class MyReviewer(tb.Reviewer):
     def __init__(self, BDUSS_key: str, fname: str):
@@ -57,6 +57,7 @@ class MyReviewer(tb.Reviewer):
         self.fraud_patterns = [
             re.compile('1290783771'),
             re.compile('3075922592'),
+            re.compile('2275108421'),
         ]
         # 二维码链接黑名单
         self.qrcode_patterns = [
@@ -96,7 +97,7 @@ class MyReviewer(tb.Reviewer):
             return tb.Punish(tb.Ops.HIDE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
-        """检查回复中的广告等"""
+        """检查回复中的违禁词"""
         # 防止误删
         if post.user.is_bawu or post.tid in self.exclude_tids:
             return
@@ -116,27 +117,59 @@ class MyReviewer(tb.Reviewer):
 
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
         return
-    
+
     async def check_fraud(self, obj: Union[tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """检查回复是否涉嫌诈骗"""
         # 防止误删
         if obj.user.is_bawu or obj.tid in self.exclude_tids or obj.is_thread_author:
             return
-        for pattern in self.fraud_patterns:
-            # 命中诈骗号码黑名单，则确定为诈骗
-            if pattern.search(obj.text):
-                op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
-                await self.db.add_user_credit(obj.user, True)
-                return tb.Punish(op, block_days=1, note=punish_note(0, FraudTypes.CONFIRMED_FRAUD))
-        # 4级以下的账号接单一律按疑似诈骗处理
-        if obj.user.level < 4:
+        punish = False
+        fraud_type = FraudTypes.NOT_FRAUD
+        for _ in range(1):
+            # 检查黑名单
+            for pattern in self.fraud_patterns:
+                if pattern.search(obj.text):
+                    punish = True
+                    fraud_type = FraudTypes.CONFIRMED_FRAUD
+                    break
+            if punish:
+                break
+            # 特征检测
+            # 1.贴吧等级1级（未关注）
+            # 2.1722或1783开头的10位user_id
+            # 3.用户名为4-5个汉字（这条不一定）
+            # 4.性别为女
+            # 5.ip属地为内蒙古或上海
+            if (obj.user.level == 1 and
+                re.match(r'^(1722\d{6})|(1783\d{6})$', str(obj.user.user_id)) and
+                # re.match(r'^[\u4e00-\u9fa5]{4,6}$', obj.user.user_name) and
+                obj.user.gender == 2 and
+                obj.user.ip in ('', '内蒙古', '上海')
+            ):
+                punish = True
+                fraud_type = FraudTypes.SUSPECTED_FRAUD
+                break
+            # 检查发言是否包含加q私聊等
             async with httpx.AsyncClient() as client:
                 r = await client.post(antifraud_url, data={'text': obj.text})
                 if r.text == 'spam':
-                    op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
-                    # 疑似诈骗不标记is_fraud=True
-                    await self.db.add_user_credit(obj.user)
-                    return tb.Punish(op, block_days=1, note=punish_note(0, FraudTypes.SUSPECTED_FRAUD))
+                    # 4级以下的账号一律按疑似诈骗处理
+                    if obj.user.level < 4:
+                        punish = True
+                        fraud_type = FraudTypes.SUSPECTED_FRAUD
+                        break
+                    # 特征检测：1.用户名为4-5个汉字 2.性别为女 3.ip属地为内蒙古或上海
+                    if (re.match(r'^[\u4e00-\u9fa5]{4,5}$', obj.user.user_name) and
+                        obj.user.gender == 2 and
+                        (not obj.user.ip or obj.user.ip in ('内蒙古', '上海'))
+                    ):
+                        punish = True
+                        fraud_type = FraudTypes.SUSPECTED_FRAUD
+                        break
+        if punish:
+            # 疑似诈骗不标记is_fraud=True
+            await self.db.add_user_credit(obj.user)
+            return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(0, fraud_type))
 
     async def check_img(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """检查违规图片"""
