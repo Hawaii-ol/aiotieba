@@ -138,12 +138,12 @@ class MyReviewer(tb.Reviewer):
             # 1.贴吧等级1级（未关注）
             # 2.1722或1783开头的10位user_id
             # 3.用户名为4-5个汉字（这条不一定）
-            # 4.性别为女
+            # 4.性别为女（有时客户端会返回未知）
             # 5.ip属地为内蒙古或上海
             if (obj.user.level == 1 and
                 re.match(r'^(1722\d{6})|(1783\d{6})$', str(obj.user.user_id)) and
                 # re.match(r'^[\u4e00-\u9fa5]{4,6}$', obj.user.user_name) and
-                obj.user.gender == 2 and
+                obj.user.gender != 1 and
                 obj.user.ip in ('内蒙古', '上海')
             ):
                 punish = True
