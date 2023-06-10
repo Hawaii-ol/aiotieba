@@ -480,6 +480,7 @@ class Comment_p(object):
         agree (int): 点赞数
         disagree (int): 点踩数
         create_time (int): 创建时间
+        is_thread_author (bool): 是否楼主
     """
 
     __slots__ = [
@@ -495,6 +496,7 @@ class Comment_p(object):
         '_agree',
         '_disagree',
         '_create_time',
+        '_is_thread_author',
     ]
 
     def _init(self, data_proto: TypeMessage) -> Contents_pc:
@@ -652,6 +654,14 @@ class Comment_p(object):
         """
 
         return self._create_time
+    
+    @property
+    def is_thread_author(self) -> bool:
+        """
+        是否楼主
+        """
+
+        return self._is_thread_author
 
 
 class UserInfo_p(object):
@@ -2278,6 +2288,7 @@ class Posts(Containers[Post]):
                 comment._tid = post._tid
                 comment._ppid = post._pid
                 comment._user = users[comment._author_id]
+                comment._is_thread_author = self._thread._author_id == comment._author_id
 
         return self
 

@@ -6,7 +6,7 @@ from typing import Optional, Union
 from enum import Enum
 
 import aiotieba as tb
-from aiotieba._logger import LOG
+from aiotieba import _logging as LOG
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
 antifraud_url = 'http://127.0.0.1:14930/predict/fraud'
@@ -144,7 +144,7 @@ class MyReviewer(tb.Reviewer):
                 re.match(r'^(1722\d{6})|(1783\d{6})$', str(obj.user.user_id)) and
                 # re.match(r'^[\u4e00-\u9fa5]{4,6}$', obj.user.user_name) and
                 obj.user.gender == 2 and
-                obj.user.ip in ('', '内蒙古', '上海')
+                obj.user.ip in ('内蒙古', '上海')
             ):
                 punish = True
                 fraud_type = FraudTypes.SUSPECTED_FRAUD
