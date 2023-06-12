@@ -2,9 +2,9 @@ import argparse
 import asyncio
 import httpx
 import re
+import pathlib
 from typing import Optional, Union, List
 from enum import Enum
-from pathlib import Path
 
 import aiotieba as tb
 from aiotieba import _logging as LOG
@@ -49,7 +49,7 @@ class MyReviewer(tb.Reviewer):
         self.post_checkers = [self.check_blacklist, self.check_fraud, self.check_post, self.check_img]
         self.comment_checkers = [self.check_blacklist, self.check_fraud, self.check_comment]
 
-        rules_path = Path(__file__).parent / 'antispam' / 'rules'
+        rules_path = pathlib.Path(__file__).parent / 'antispam' / 'rules'
         # 加载回贴违禁词
         self.post_ad_patterns = self._parse_rule(rules_path / 'post_ad.txt')
         # 加载诈骗号码黑名单

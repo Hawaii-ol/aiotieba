@@ -1,7 +1,9 @@
+import __init__
 import asyncio
 import aiomysql
 import aiotieba
-from pathlib import Path
+import os
+import pathlib
 from typing import List
 from aiotieba._config import CONFIG
 
@@ -25,7 +27,7 @@ async def collect_alt_portraits() -> List[str]:
     return [r[0] for r in result]
 
 if __name__ == '__main__':
-    rules_path = Path(__file__).parent / 'antispam' / 'rules'
+    rules_path = pathlib.Path(__file__).parent.parent / 'antispam' / 'rules'
     print('以下为已知的诈骗号码名单：')
     with open(rules_path / 'fraud.txt', encoding='utf-8') as file:
         l = []
@@ -48,6 +50,6 @@ if __name__ == '__main__':
     print('\n以下为同一诈骗团伙使用的部分贴吧马甲账号（账号特征均高度一致）：')
     asyncio.run(collect_alt_uinfo())
     print('\n（什么是用户名、昵称和贴吧ID）')
-    print('在贴吧客户端点击某位用户的头像，可以跳转到TA的主页。主页显示的名称即为昵称，昵称下方的ID即为客户端贴吧ID。'
+    print('在贴吧客户端点击某位用户的头像，可以跳转到TA的主页。主页显示的名称即为昵称，昵称下方的ID即为贴吧ID。'
           '用户名可点击右侧的“关于Ta”查看。昵称可以被修改，而用户名和贴吧ID不可修改且唯一。')
-    print('\n请各位吧友擦亮眼睛，谨防上当受骗。不要相信以上任何账号的狡辩。')
+    print('\n请各位吧友擦亮眼睛，谨防上当受骗。不要给以上任何账号转账，也不要相信它们的鬼话。')

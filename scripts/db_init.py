@@ -1,3 +1,4 @@
+import __init__
 import asyncio
 from aiotieba.database import MySQLDB
 

@@ -1,4 +1,4 @@
-# 添加违规图片
+import __init__
 import re
 import cv2
 import pathlib

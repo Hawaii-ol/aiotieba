@@ -1,8 +1,7 @@
-import sys
+import __init__
 import time
 import asyncio
 import argparse
-import pathlib
 import aiotieba as tb
 
 async def recover_tid(fname, tid, is_hide=True):

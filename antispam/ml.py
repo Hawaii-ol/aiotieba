@@ -1,12 +1,12 @@
 import emoji
 import jieba
 import re
-from pathlib import Path
+import pathlib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
 class BaseLearner:
-    basepath = Path(__file__).parent / 'dataset'
+    basepath = pathlib.Path(__file__).parent / 'dataset'
     def __init__(self) -> None:
         with open(self.basepath / 'stopwords.txt', encoding='utf-8') as fstop,\
             open(self.basepath / 'cyuyan_dict.txt', encoding='utf-8') as fdict:

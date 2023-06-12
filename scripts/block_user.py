@@ -1,3 +1,4 @@
+import __init__
 import sys
 import asyncio
 import aiotieba as tb
