@@ -37,6 +37,7 @@
 !recover_item.py
 !query_user.py
 !block_user.py
+!export_fraud.py
 
 *.pyproj
 *.log
