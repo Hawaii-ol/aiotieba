@@ -1,16 +1,15 @@
 import emoji
 import jieba
-import os
 import re
+from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
-dataset_dir = os.path.join(os.path.dirname(__file__), 'dataset')
-
 class BaseLearner:
+    basepath = Path(__file__).parent / 'dataset'
     def __init__(self) -> None:
-        with open(os.path.join(dataset_dir, 'stopwords.txt'), encoding='utf-8') as fstop,\
-            open(os.path.join(dataset_dir, 'cyuyan_dict.txt'), encoding='utf-8') as fdict:
+        with open(self.basepath / 'stopwords.txt', encoding='utf-8') as fstop,\
+            open(self.basepath / 'cyuyan_dict.txt', encoding='utf-8') as fdict:
             self.stopwords = set(line.strip() for line in fstop)
             jieba.load_userdict(fdict)
             self.model = MultinomialNB(alpha=1.0)
@@ -52,8 +51,8 @@ class AntiSpammer(BaseLearner):
         return super().__init__()
 
     def train(self):
-        hamfile = os.path.join(dataset_dir, 'ham.txt')
-        spamfile = os.path.join(dataset_dir, 'spam.txt')
+        hamfile = self.basepath / 'ham.txt'
+        spamfile = self.basepath / 'spam.txt'
         return super().train(hamfile, spamfile)
 
 class AntiFraud(BaseLearner):
@@ -61,8 +60,8 @@ class AntiFraud(BaseLearner):
         return super().__init__()
     
     def train(self):
-        hamfile = os.path.join(dataset_dir, 'fraud_ham.txt')
-        spamfile = os.path.join(dataset_dir, 'fraud_spam.txt')
+        hamfile = self.basepath / 'fraud_ham.txt'
+        spamfile = self.basepath / 'fraud_spam.txt'
         return super().train(hamfile, spamfile)
     
     def predict(self, text : str):

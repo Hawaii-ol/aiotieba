@@ -2,8 +2,9 @@ import argparse
 import asyncio
 import httpx
 import re
-from typing import Optional, Union
+from typing import Optional, Union, List
 from enum import Enum
+from pathlib import Path
 
 import aiotieba as tb
 from aiotieba import _logging as LOG
@@ -47,28 +48,29 @@ class MyReviewer(tb.Reviewer):
         self.thread_checkers = [self.check_blacklist, self.check_thread, self.check_img]
         self.post_checkers = [self.check_blacklist, self.check_fraud, self.check_post, self.check_img]
         self.comment_checkers = [self.check_blacklist, self.check_fraud, self.check_comment]
-        # 回贴广告违禁词
-        self.post_ad_patterns = [
-            re.compile('http://8.136.190.216:8080/ca'),
-            re.compile('graves2022'),
-            re.compile('昆鹏发卡'),
-        ]
-        # 诈骗号码黑名单
-        self.fraud_patterns = [
-            re.compile('1290783771'),
-            re.compile('3075922592'),
-            re.compile('2275108421'),
-        ]
-        # 二维码链接黑名单
-        self.qrcode_patterns = [
-            re.compile('weixin.qq.com'),
-            re.compile('qm.qq.com'),
-        ]
+
+        rules_path = Path(__file__).parent / 'antispam' / 'rules'
+        # 加载回贴违禁词
+        self.post_ad_patterns = self._parse_rule(rules_path / 'post_ad.txt')
+        # 加载诈骗号码黑名单
+        self.fraud_patterns = self._parse_rule(rules_path / 'fraud.txt')
+        # 加载二维码链接黑名单
+        self.qrcode_patterns = self._parse_rule(rules_path / 'qrcode.txt')
         # 部分例外贴的tid（置顶贴、吧务公告、诈骗举报贴和申诉贴等）
-        self.exclude_tids = [
-            5550750195, # c语言吧新人引导，入门必看！
-            8442248933, # 关于打击诈骗活动的征集意见
-        ]
+        self.exclude_tids = [int(tid) for tid in self._parse_rule(rules_path / 'exclude_tids.txt', False)]
+    
+    def _parse_rule(self, filename, regex=True) -> List[re.Pattern]:
+        patterns = []
+        with open(filename, encoding='utf-8') as file:
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if regex:
+                    patterns.append(re.compile(line))
+                else:
+                    patterns.append(line)
+        return patterns
 
     def time_interval(self):
         """
@@ -135,12 +137,12 @@ class MyReviewer(tb.Reviewer):
             if punish:
                 break
             # 特征检测
-            # 1.贴吧等级1级（未关注）
+            # 1.贴吧等级<4
             # 2.1722或1783开头的10位user_id
-            # 3.用户名为4-5个汉字（这条不一定）
+            # 3.用户名为4-6个汉字（这条不一定）
             # 4.性别为女（有时客户端会返回未知）
             # 5.ip属地为内蒙古或上海
-            if (obj.user.level == 1 and
+            if (obj.user.level < 4 and
                 re.match(r'^(1722\d{6})|(1783\d{6})$', str(obj.user.user_id)) and
                 # re.match(r'^[\u4e00-\u9fa5]{4,6}$', obj.user.user_name) and
                 obj.user.gender != 1 and
