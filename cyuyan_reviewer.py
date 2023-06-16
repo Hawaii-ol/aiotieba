@@ -96,7 +96,7 @@ class MyReviewer(tb.Reviewer):
                 violations = 1
             block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(thread.user)
-            return tb.Punish(tb.Ops.HIDE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
+            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
         """检查回复中的违禁词"""
@@ -203,9 +203,8 @@ class MyReviewer(tb.Reviewer):
             else:
                 violations = 1
             block_days = 1 if violations >= 3 else 0
-            op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
             await self.db.add_user_credit(obj.user)
-            return tb.Punish(op, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
+            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
     
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """
@@ -219,9 +218,8 @@ class MyReviewer(tb.Reviewer):
         if credit := await self.db.get_user_credit(obj.user):
             violations, is_fraud = credit
             if violations >= 8 or is_fraud:
-                op = tb.Ops.HIDE if isinstance(obj, tb.Thread) else tb.Ops.DELETE
                 await self.db.add_user_credit(obj.user, is_fraud)
-                return tb.Punish(op, block_days=1, note=punish_note(violations, FraudTypes.CONFIRMED_FRAUD if is_fraud else FraudTypes.NOT_FRAUD))
+                return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(violations, FraudTypes.CONFIRMED_FRAUD if is_fraud else FraudTypes.NOT_FRAUD))
 
 if __name__ == '__main__':
 
