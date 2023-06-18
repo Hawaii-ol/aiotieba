@@ -4,9 +4,9 @@ import asyncio
 import argparse
 import aiotieba as tb
 
-async def recover_tid(fname, tid, is_hide=True):
+async def recover_tid(fname, tid, unhide=False):
     async with tb.Reviewer('default', fname) as reviewer:
-        if is_hide:
+        if unhide:
             await reviewer.client.unhide_thread(fname, tid)
         else:
             await reviewer.client.recover_thread(fname, tid)
@@ -27,15 +27,21 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         '-t', '--tid',
-        help='被隐藏的主题贴的tid',
+        help='被删除或屏蔽的主题贴的tid',
     )
     group.add_argument(
         '-p', '--pid',
         help='被删除的回复贴或楼中楼的pid',
     )
+    parser.add_argument(
+        '--unhide',
+        default=False,
+        action='store_true',
+        help='恢复被屏蔽的主题贴'
+    )
     fname = 'C语言'
     args = parser.parse_args()
     if args.tid:
-        asyncio.run(recover_tid('C语言', args.tid))
+        asyncio.run(recover_tid('C语言', args.tid, args.unhide))
     elif args.pid:
         asyncio.run(recover_pid('C语言', args.pid))
