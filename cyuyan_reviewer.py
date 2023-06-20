@@ -8,17 +8,10 @@ from enum import Enum
 
 import aiotieba as tb
 from aiotieba import _logging as LOG
+from aiotieba.database import FraudTypes
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
 antifraud_url = 'http://127.0.0.1:14930/predict/fraud'
-
-class FraudTypes(Enum):
-    # 不涉嫌诈骗
-    NOT_FRAUD = 0
-    # 疑似诈骗
-    SUSPECTED_FRAUD = 1
-    # 已核实诈骗
-    CONFIRMED_FRAUD = 2
 
 def punish_note(violations: int, fraud_type: FraudTypes):
     """
@@ -90,12 +83,10 @@ class MyReviewer(tb.Reviewer):
             if r.text == 'spam':
                 punish = True
         if punish:
-            if credit := await self.db.get_user_credit(thread.user):
-                violations = credit[0] + 1
-            else:
-                violations = 1
+            uc = await self.db.get_user_credit(thread.user)
+            violations = uc.violations + 1 if uc else 1
             block_days = 1 if violations >= 3 else 0
-            await self.db.add_user_credit(thread.user)
+            await self.db.add_user_credit(thread.user, FraudTypes.NOT_FRAUD)
             return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
@@ -109,12 +100,10 @@ class MyReviewer(tb.Reviewer):
                 punish = True
                 break
         if punish:
-            if credit := await self.db.get_user_credit(post.user):
-                violations = credit[0] + 1
-            else:
-                violations = 1
+            uc = await self.db.get_user_credit(post.user)
+            violations = uc.violations + 1 if uc else 1
             block_days = 1 if violations >= 3 else 0
-            await self.db.add_user_credit(post.user)
+            await self.db.add_user_credit(post.user, FraudTypes.NOT_FRAUD)
             return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
 
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
@@ -160,17 +149,14 @@ class MyReviewer(tb.Reviewer):
                         punish = True
                         fraud_type = FraudTypes.SUSPECTED_FRAUD
                         break
-                    # 特征检测：1.用户名为4-5个汉字 2.性别为女 3.ip属地为内蒙古或上海
-                    if (re.match(r'^[\u4e00-\u9fa5]{4,5}$', obj.user.user_name) and
-                        obj.user.gender == 2 and
-                        (not obj.user.ip or obj.user.ip in ('内蒙古', '上海'))
-                    ):
+                    # 已标记疑似诈骗的账号
+                    uc = await self.db.get_user_credit(obj.user)
+                    if uc and uc.fraud_type == FraudTypes.SUSPECTED_FRAUD:
                         punish = True
                         fraud_type = FraudTypes.SUSPECTED_FRAUD
                         break
         if punish:
-            # 疑似诈骗不标记is_fraud=True
-            await self.db.add_user_credit(obj.user)
+            await self.db.add_user_credit(obj.user, fraud_type)
             return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(0, fraud_type))
 
     async def check_img(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
@@ -198,12 +184,10 @@ class MyReviewer(tb.Reviewer):
                 LOG.info(f'Possible spam image: src={img_content.origin_src}, img_hash={img_content.hash}, phash={phash}')
                 break
         if punish:
-            if credit := await self.db.get_user_credit(obj.user):
-                violations = credit[0] + 1
-            else:
-                violations = 1
+            uc = await self.db.get_user_credit(obj.user)
+            violations = uc.violations + 1 if uc else 1
             block_days = 1 if violations >= 3 else 0
-            await self.db.add_user_credit(obj.user)
+            await self.db.add_user_credit(obj.user, FraudTypes.NOT_FRAUD)
             return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
     
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
@@ -215,11 +199,10 @@ class MyReviewer(tb.Reviewer):
         # 给黑名单用户在指定贴下申诉的机会
         if obj.tid in self.exclude_tids:
             return
-        if credit := await self.db.get_user_credit(obj.user):
-            violations, is_fraud = credit
-            if violations >= 8 or is_fraud:
-                await self.db.add_user_credit(obj.user, is_fraud)
-                return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(violations, FraudTypes.CONFIRMED_FRAUD if is_fraud else FraudTypes.NOT_FRAUD))
+        if uc := await self.db.get_user_credit(obj.user):
+            if uc.violations >= 8 or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:
+                await self.db.add_user_credit(obj.user, uc.fraud_type)
+                return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(uc.violations, uc.fraud_type))
 
 if __name__ == '__main__':
 

@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import sqlite3
+from enum import IntEnum
 from pathlib import Path
 from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
@@ -39,6 +40,22 @@ def exec_handler_MySQL(create_table_func: Callable, default_ret: Any):
 
     return decorator
 
+class FraudTypes(IntEnum):
+    # 不涉嫌诈骗
+    NOT_FRAUD = 0
+    # 疑似诈骗
+    SUSPECTED_FRAUD = 1
+    # 已核实诈骗
+    CONFIRMED_FRAUD = 2
+
+class UserCredit:
+    def __init__(self, user: UserInfo, violations: int, fraud_type: FraudTypes) -> None:
+        self.user = user
+        self.violations = violations
+        self.fraud_type = FraudTypes(fraud_type)
+
+    def __str__(self):
+        return f'UserCredit(user={repr(self.user)}, violations={self.violations}, fraud_type={self.fraud_type.name})'
 
 class MySQLDB(object):
     """
@@ -241,52 +258,54 @@ class MySQLDB(object):
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     "CREATE TABLE IF NOT EXISTS `user_credit` \
-                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `is_fraud` TINYINT(1) NOT NULL DEFAULT 0, `last_record` NOT NULL DEFAULT CURRENT_TIMESTAMP\
+                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `fraud_type` TINYINT(1) NOT NULL DEFAULT 0, `last_record` NOT NULL DEFAULT CURRENT_TIMESTAMP\
                     INDEX `user_name`(user_name))"
                 )
                 LOG.info("成功创建表user_credit")
 
     @exec_handler_MySQL(_create_table_user_credit, None)
-    async def get_user_credit(self, user: UserInfo) -> Tuple[int, bool]:
+    async def get_user_credit(self, user: UserInfo) -> UserCredit:
         """
         获取指定用户的信用记录(违规次数和诈骗记录)
 
         Arg:
             user (UserInfo): 用户
         Returns:
-            (int, bool): (违规次数, 是否涉嫌诈骗)
+            UserCredit: 用户信用记录(违规次数, 是否涉嫌诈骗等)
             返回None表示无用户记录
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"SELECT `violations`, `is_fraud` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
+                    await cursor.execute(f"SELECT `violations`, `fraud_type` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return None
         else:
             if res_tuple := await cursor.fetchone():
-                return (res_tuple[0], bool(res_tuple[1]))
+                return UserCredit(user, *res_tuple)
             return None
     
     @exec_handler_MySQL(_create_table_user_credit, False)
-    async def add_user_credit(self, user: UserInfo, is_fraud=False) -> bool:
+    async def add_user_credit(self, user: UserInfo, fraud_type: FraudTypes) -> bool:
         """
         添加用户信用记录
 
         Arg:
             user (UserInfo): 用户user_name
-            is_fraud: 是否涉嫌诈骗
+            fraud_type (FraudTypes): 涉嫌诈骗情况
         Returns:
             bool: True成功 False失败
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    sql_fraud = '`is_fraud`=1, ' if is_fraud else ''
+                    sql_fraud = '`fraud_type`=1, ' if fraud_type else ''
                     sql_update = f'`violations`=`violations`+1, {sql_fraud}`last_record`=CURRENT_TIMESTAMP()'
-                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`is_fraud`) VALUES(%s,%s,%s,1,%s) \
-                        ON DUPLICATE KEY UPDATE {sql_update}", (user.user_id, user.user_name or None, user.portrait, int(is_fraud)))
+                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`fraud_type`) VALUES(%s,%s,%s,1,%s) \
+                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1, `fraud_type`=GREATEST(`fraud_type`, %s), `last_record`=CURRENT_TIMESTAMP()",
+                        (user.user_id, user.user_name or None, user.portrait, int(fraud_type), int(fraud_type))
+                    )
         except aiomysql.Error as err:
             LOG.warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return False

@@ -54,7 +54,7 @@ async def main(fname, credential, cred_type=None):
                 fraud_type = FraudTypes.CONFIRMED_FRAUD
             note = punish_note(violations, fraud_type)
             print(note)
-            await reviewer.db.add_user_credit(user, fraud_type == FraudTypes.CONFIRMED_FRAUD)
+            await reviewer.db.add_user_credit(user, fraud_type)
             await reviewer.block(user.portrait, day=1, reason=note)
         else:
             print('Invalid choice.')
