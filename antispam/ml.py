@@ -2,6 +2,7 @@ import emoji
 import jieba
 import re
 import pathlib
+import pprint
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
@@ -13,18 +14,42 @@ class BaseLearner:
             self.stopwords = set(line.strip() for line in fstop)
             jieba.load_userdict(fdict)
             self.model = MultinomialNB(alpha=1.0)
-            self.vec = TfidfVectorizer()
+            # 文档内容转小写
+            # 分词规则：匹配任何长度单词，以空白字符分隔
+            self.vec = TfidfVectorizer(
+                lowercase=True,
+                token_pattern=r'(?u)\S+',
+            )
             self.trained = False
+    
+    def _clean_word(self, word: str) -> bool:
+        """清洗文档，过滤无效词汇"""
+        # 过滤所有停用词
+        if word in self.stopwords:
+            return False
+        # 过滤空白字符和标点符号
+        if re.match(r'^\W*$', word):
+            return False
+        # 过滤除汉字和qv以外的单个字符:
+        if re.match(r'^[^qv\u4e00-\u9fa5]$', word, re.IGNORECASE):
+            return False
+        # 过滤所有数字字符串
+        if word.isdigit():
+            return False
+        # 过滤单字母+数字，如a1 c99 q123456789
+        if re.match(r'^[A-Za-z]\d+$', word):
+            return False
+        return True
 
     def train(self, hamfile, spamfile):
         with open(hamfile, encoding='utf-8') as fham,\
             open(spamfile, encoding='utf-8') as fspam:
-            cuts = (jieba.cut(line.lower().strip()) for line in fham)
-            words = (filter(lambda x: x not in self.stopwords, cut) for cut in cuts)
-            text_hams = [','.join(w) for w in words]
-            cuts = (jieba.cut(line.lower().strip()) for line in fspam)
-            words = (filter(lambda x: x not in self.stopwords, cut) for cut in cuts)
-            text_spams = [','.join(w) for w in words]
+            cuts = (jieba.cut(line) for line in fham)
+            words = (filter(self._clean_word, cut) for cut in cuts)
+            text_hams = [' '.join(w) for w in words]
+            cuts = (jieba.cut(line) for line in fspam)
+            words = (filter(self._clean_word, cut) for cut in cuts)
+            text_spams = [' '.join(w) for w in words]
             text_all = text_hams + text_spams
             x_train = self.vec.fit_transform(text_all).toarray()
             y_train = ['ham' if i < len(text_hams) else 'spam' for i in range(len(text_all))]
@@ -34,15 +59,11 @@ class BaseLearner:
     def predict(self, text : str):
         if not self.trained:
             raise RuntimeError('model not trained, use train() to train the model first.')
-        # 转小写
-        text = text.lower()
-        # 替换所有的换行符
-        text = text.replace('\n', '_')
         # 移除所有的颜文字
         text = emoji.replace_emoji(text)
         cut = jieba.cut(text)
-        words = list(filter(lambda x: x not in self.stopwords, cut))
-        x_test = self.vec.transform([','.join(words)]).toarray()
+        words = filter(self._clean_word, cut)
+        x_test = self.vec.transform([' '.join(words)]).toarray()
         y_text = self.model.predict(x_test)
         return y_text[0]
 
@@ -73,5 +94,9 @@ class AntiFraud(BaseLearner):
 if __name__ == '__main__':
     _aspam = AntiSpammer()
     _aspam.train()
+    print('TF-IDF feature names for spam:')
+    print(_aspam.vec.get_feature_names_out().tolist())
     _afraud = AntiFraud()
     _afraud.train()
+    print('TF-IDF feature names for fraud:')
+    print(_afraud.vec.get_feature_names_out().tolist())
