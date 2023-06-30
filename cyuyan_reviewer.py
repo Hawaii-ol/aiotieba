@@ -125,7 +125,7 @@ class MyReviewer(tb.Reviewer):
                     break
             if punish:
                 break
-            # 特征检测
+            # 特征检测一批马甲账号
             # 1.贴吧等级<4
             # 2.1722或1783开头的10位user_id
             # 3.用户名为4-6个汉字（这条不一定）
@@ -137,8 +137,9 @@ class MyReviewer(tb.Reviewer):
                 obj.user.gender != 1 and
                 obj.user.ip in ('内蒙古', '上海')
             ):
+                LOG.info(f'特征检测: {repr(obj.user)}')
                 punish = True
-                fraud_type = FraudTypes.SUSPECTED_FRAUD
+                fraud_type = FraudTypes.CONFIRMED_FRAUD
                 break
             # 检查发言是否包含加q私聊等
             async with httpx.AsyncClient() as client:
