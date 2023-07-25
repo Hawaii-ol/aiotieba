@@ -164,12 +164,12 @@ class MyReviewer(tb.Reviewer):
                 punish = True
                 fraud_type = FraudTypes.CONFIRMED_FRAUD
                 break
-            # 检查发言是否包含加q私聊等
+            # 检查发言是否为加q私聊等接单性质
             async with httpx.AsyncClient() as client:
                 r = await client.post(antifraud_url, data={'text': obj.text})
                 if r.text == 'spam':
-                    # 4级以下的账号一律按疑似诈骗处理
-                    if obj.user.level < 4:
+                    # 7级以下的账号一律按疑似诈骗处理
+                    if obj.user.level < 7:
                         punish = True
                         fraud_type = FraudTypes.SUSPECTED_FRAUD
                         break
