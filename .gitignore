@@ -15,6 +15,7 @@
 
 !aiotieba
 !aiotieba/**
+!aiotieba_full_example.toml
 !.github
 !.github/**
 !docs

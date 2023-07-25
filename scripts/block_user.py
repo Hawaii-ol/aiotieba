@@ -1,9 +1,9 @@
+# 脚本功能：封禁用户
 import __init__
-import sys
 import asyncio
 import argparse
 import aiotieba as tb
-from cyuyan_reviewer import FraudTypes, punish_note
+from cyuyan_reviewer import FraudTypes, MyReviewer
 
 async def main(fname, credential, cred_type=None):
     if not cred_type:
@@ -31,13 +31,14 @@ async def main(fname, credential, cred_type=None):
         except ValueError:
             print(f"{cred_type} must be an integer, not '{credential}'.")
             exit(1)
-    async with tb.Reviewer('default', fname) as reviewer:
+    
+    async with MyReviewer('default', fname) as reviewer:
         if cred_type == 'tieba_uid':
             user = await reviewer.client.tieba_uid2user_info(credential)
         else:
             user = await reviewer.client.get_user_info(credential)
         print('请选择封禁原因：')
-        print('[1] 广告')
+        print('[1] 违法违规内容或垃圾广告')
         print('[2] 疑似诈骗')
         print('[3] 举报核实诈骗')
         try:
@@ -47,10 +48,11 @@ async def main(fname, credential, cred_type=None):
             uc = await reviewer.db.get_user_credit(user)
             violations = uc.violations + 1 if uc else 1
             fraud_type = FraudTypes(reason - 1)
-            note = punish_note(violations, fraud_type)
+            punish = reviewer.make_punish(tb.Ops.NORMAL, violations, fraud_type)
+            note = punish.note
             print(note)
             await reviewer.db.add_user_credit(user, fraud_type)
-            await reviewer.block(user.portrait, day=1, reason=note)
+            await reviewer.block(user.portrait, day=punish.block_days, reason=note)
         except ValueError:
             print('Invalid choice.')
             exit(1)

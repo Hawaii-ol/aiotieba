@@ -1,8 +1,8 @@
+# 脚本功能：导出诈骗用户名单
 import __init__
 import asyncio
 import aiomysql
 import aiotieba
-import os
 import pathlib
 from typing import List
 from aiotieba._config import CONFIG

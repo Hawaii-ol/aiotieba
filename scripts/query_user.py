@@ -1,8 +1,8 @@
+# 脚本功能：根据用户凭据查询用户详细信息
 import __init__
 import asyncio
 import aiotieba
 import argparse
-
 
 async def main(credential, cred_type=None):
     if not cred_type:

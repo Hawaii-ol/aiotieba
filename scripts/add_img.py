@@ -1,3 +1,4 @@
+# 脚本功能：添加图片到违规图片数据库
 import __init__
 import re
 import cv2

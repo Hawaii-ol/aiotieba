@@ -1,3 +1,4 @@
+# 脚本功能：恢复被屏蔽/删除的主题贴和回复贴，并加入到缓存记录，防止再次误删
 import __init__
 import time
 import asyncio

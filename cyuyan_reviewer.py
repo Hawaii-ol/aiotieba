@@ -4,39 +4,21 @@ import httpx
 import re
 import pathlib
 from typing import Optional, Union, List
-from enum import Enum
 
 import aiotieba as tb
+from aiotieba._config import CONFIG
 from aiotieba._logging import get_logger as LOG
 from aiotieba.database import FraudTypes
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
 antifraud_url = 'http://127.0.0.1:14930/predict/fraud'
 
-def punish_note(violations: int, fraud_type: FraudTypes):
-    """
-    根据违规记录，返回对应的封禁理由
-    Args:
-        violations (int): 违规次数
-        fruad_type (FraudTypes): 涉嫌诈骗程度
-            FraudTypes.NOT_FRAUD: 不涉嫌诈骗
-            FraudTypes.SUSPECTED_FRAUD: 疑似诈骗
-            FraudTypes.CONFIRMED_FRAUD: 已核实诈骗
-    """
-    if fraud_type == FraudTypes.SUSPECTED_FRAUD:
-        return '风控检测疑似诈骗账号，为避免风险删封处理。'
-    elif fraud_type == FraudTypes.CONFIRMED_FRAUD:
-        return '经举报核实，此账号或相关账号存在诈骗行为，予以发言永久删封处罚。如有异议，可向吧务组申诉，并提交相关证据澄清。'
-    if violations < 5:
-        return '散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为'
-    elif 5 <= violations < 8:
-        return f'散布代写/接单/辅导类主题帖，或推广网站/课程/群聊等广告行为；请注意，你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
-    else:
-        return '多次散布广告或群发垃圾信息，无视吧规，屡教不改，予以发言永久删封处罚。'
-
 class MyReviewer(tb.Reviewer):
     def __init__(self, BDUSS_key: str, fname: str):
         super().__init__(BDUSS_key, fname)
+        bawu_config = CONFIG['Bawu']
+        self.is_bazhu = bawu_config.get('is_bazhu', False)
+        self.blacklist_violations = bawu_config.get('blacklist_violations', 6)
 
         self.thread_checkers = [self.check_blacklist, self.check_thread, self.check_img]
         self.post_checkers = [self.check_blacklist, self.check_fraud, self.check_post, self.check_img]
@@ -70,6 +52,49 @@ class MyReviewer(tb.Reviewer):
         每2分钟执行一次检查
         """
         return lambda : 120.0
+    
+    def punish_note(self, violations: int, fraud_type: FraudTypes):
+        """
+        根据违规记录，返回对应的封禁理由
+        Args:
+            violations (int): 违规次数
+            fruad_type (FraudTypes): 涉嫌诈骗情况
+                FraudTypes.NOT_FRAUD: 不涉嫌诈骗
+                FraudTypes.SUSPECTED_FRAUD: 疑似诈骗
+                FraudTypes.CONFIRMED_FRAUD: 已核实诈骗
+        """
+        if fraud_type == FraudTypes.SUSPECTED_FRAUD:
+            return '风控检测疑似诈骗账号，为避免风险删封处理。'
+        elif fraud_type == FraudTypes.CONFIRMED_FRAUD:
+            return '经举报核实，此账号或相关账号存在诈骗行为，予以发言永久删封处罚。'
+        if violations <= 3:
+            return '发布违法违规内容或垃圾广告。'
+        elif violations < self.blacklist_violations:
+            return f'发布违法违规内容或垃圾广告。你已有{violations}次违规记录，请阅读并遵守吧规。继续违规可能导致永久删封处罚。'
+        else:
+            return '多次发布违法违规内容或垃圾广告，屡教不改，藐视吧规，予以发言永久删封处罚。'
+
+    def make_punish(self, op: tb.Ops, violations: int, fraud_type: FraudTypes) -> tb.Punish:
+        """
+        生成处罚 (punish对象)
+        Args:
+            op (tb.Ops): 处罚类型(删贴、隐藏)
+            violations (int): 违规次数
+            fruad_type (FraudTypes): 涉嫌诈骗情况
+        """
+        note = self.punish_note(violations, fraud_type)
+        max_days = 10 if self.is_bazhu else 1
+        if fraud_type == FraudTypes.CONFIRMED_FRAUD:
+            days = min(10, max_days)
+        elif violations == 1: # 初次豁免
+            days = 0
+        elif violations <= 3:
+            days = 1
+        elif violations < self.blacklist_violations - 1: # 拉黑前最后一次封禁为10天
+            days = min(3, max_days)
+        else:
+            days = min(10, max_days)
+        return tb.Punish(op, block_days=days, note=note)
 
     async def check_thread(self, thread: tb.Thread) -> Optional[tb.Punish]:
         """检查主题贴是否为广告性质"""
@@ -85,9 +110,8 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(thread.user)
             violations = uc.violations + 1 if uc else 1
-            block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(thread.user, FraudTypes.NOT_FRAUD)
-            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
+            return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
         """检查回复中的违禁词"""
@@ -102,9 +126,8 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(post.user)
             violations = uc.violations + 1 if uc else 1
-            block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(post.user, FraudTypes.NOT_FRAUD)
-            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
+            return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
         return
@@ -157,8 +180,10 @@ class MyReviewer(tb.Reviewer):
                         fraud_type = FraudTypes.SUSPECTED_FRAUD
                         break
         if punish:
+            uc = await self.db.get_user_credit(obj.user)
+            violations = uc.violations + 1 if uc else 1
             await self.db.add_user_credit(obj.user, fraud_type)
-            return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(0, fraud_type))
+            return self.make_punish(tb.Ops.DELETE, violations, fraud_type)
 
     async def check_img(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """检查违规图片"""
@@ -187,23 +212,22 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(obj.user)
             violations = uc.violations + 1 if uc else 1
-            block_days = 1 if violations >= 3 else 0
             await self.db.add_user_credit(obj.user, FraudTypes.NOT_FRAUD)
-            return tb.Punish(tb.Ops.DELETE, block_days=block_days, note=punish_note(violations, FraudTypes.NOT_FRAUD))
+            return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
     
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
         """
-            以下用户发言一律删封：
-            1.违规达8次以上
-            2.经举报核实诈骗
+        以下用户发言一律删封：
+        1.违规次数达到或超过blacklist_violations
+        2.经举报核实诈骗
         """
         # 给黑名单用户在指定贴下申诉的机会
         if obj.tid in self.exclude_tids:
             return
         if uc := await self.db.get_user_credit(obj.user):
-            if uc.violations >= 8 or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:
+            if uc.violations >= self.blacklist_violations or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:
                 await self.db.add_user_credit(obj.user, uc.fraud_type)
-                return tb.Punish(tb.Ops.DELETE, block_days=1, note=punish_note(uc.violations, uc.fraud_type))
+                return self.make_punish(tb.Ops.DELETE, uc.violations, uc.fraud_type)
 
 if __name__ == '__main__':
 
