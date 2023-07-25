@@ -8,7 +8,7 @@ from typing import Optional, Union, List
 import aiotieba as tb
 from aiotieba._config import CONFIG
 from aiotieba._logging import get_logger as LOG
-from aiotieba.database import FraudTypes
+from aiotieba.database import FraudTypes, UserInfo
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
 antifraud_url = 'http://127.0.0.1:14930/predict/fraud'
@@ -110,7 +110,7 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(thread.user)
             violations = uc.violations + 1 if uc else 1
-            await self.db.add_user_credit(thread.user, FraudTypes.NOT_FRAUD)
+            await self.update_user_credit(thread.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
     async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
@@ -126,7 +126,7 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(post.user)
             violations = uc.violations + 1 if uc else 1
-            await self.db.add_user_credit(post.user, FraudTypes.NOT_FRAUD)
+            await self.update_user_credit(post.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
     async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
@@ -182,7 +182,7 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(obj.user)
             violations = uc.violations + 1 if uc else 1
-            await self.db.add_user_credit(obj.user, fraud_type)
+            await self.update_user_credit(obj.user, fraud_type)
             return self.make_punish(tb.Ops.DELETE, violations, fraud_type)
 
     async def check_img(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
@@ -212,7 +212,7 @@ class MyReviewer(tb.Reviewer):
         if punish:
             uc = await self.db.get_user_credit(obj.user)
             violations = uc.violations + 1 if uc else 1
-            await self.db.add_user_credit(obj.user, FraudTypes.NOT_FRAUD)
+            await self.update_user_credit(obj.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
     
     async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
@@ -226,8 +226,26 @@ class MyReviewer(tb.Reviewer):
             return
         if uc := await self.db.get_user_credit(obj.user):
             if uc.violations >= self.blacklist_violations or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:
-                await self.db.add_user_credit(obj.user, uc.fraud_type)
+                await self.update_user_credit(obj.user, uc.fraud_type)
                 return self.make_punish(tb.Ops.DELETE, uc.violations, uc.fraud_type)
+    
+    async def update_user_credit(self, user: UserInfo, fraud_type: FraudTypes, ts: int = 0):
+        """
+        更新用户信用记录到user_credit数据库
+        若当前用户不在数据库中，新增一条记录，否则将对应记录的violations + 1
+        debug模式下此方法会被替换为空
+        """
+        LOG().info(f'Update user credit: user={user} fraud_type={fraud_type}')
+        return await self.db.add_user_credit(user, fraud_type, ts)
+    
+    def debug_prepare(self):
+        super(MyReviewer, self).debug_prepare()
+
+        async def _update_user_credit_debug(*args, **kwargs):
+            pass
+
+        self.update_user_credit = _update_user_credit_debug
+
 
 if __name__ == '__main__':
 
