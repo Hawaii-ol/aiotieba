@@ -323,15 +323,15 @@ class MySQLDB(object):
             bool: True成功 False失败
         """
         if ts:
-            last_record = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+            last_record = f'"{datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")}"'
         else:
             last_record = 'CURRENT_TIMESTAMP()'
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`fraud_type`) VALUES(%s,%s,%s,1,%s) \
-                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1, `fraud_type`=GREATEST(`fraud_type`, %s), `last_record`=%s",
-                        (user.user_id, user.user_name or None, user.portrait, int(fraud_type), int(fraud_type), last_record)
+                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1, `fraud_type`=GREATEST(`fraud_type`, %s), `last_record`={last_record}",
+                        (user.user_id, user.user_name or None, user.portrait, int(fraud_type), int(fraud_type))
                     )
         except aiomysql.Error as err:
             LOG().warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
