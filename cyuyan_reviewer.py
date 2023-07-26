@@ -88,7 +88,7 @@ class MyReviewer(tb.Reviewer):
             days = min(10, max_days)
         elif violations == 1: # 初次豁免
             days = 0
-        elif violations <= 3:
+        elif violations < 3:
             days = 1
         elif violations < self.blacklist_violations - 1: # 拉黑前最后一次封禁为10天
             days = min(3, max_days)
@@ -170,12 +170,6 @@ class MyReviewer(tb.Reviewer):
                 if r.text == 'spam':
                     # 7级以下的账号一律按疑似诈骗处理
                     if obj.user.level < 7:
-                        punish = True
-                        fraud_type = FraudTypes.SUSPECTED_FRAUD
-                        break
-                    # 已标记疑似诈骗的账号
-                    uc = await self.db.get_user_credit(obj.user)
-                    if uc and uc.fraud_type == FraudTypes.SUSPECTED_FRAUD:
                         punish = True
                         fraud_type = FraudTypes.SUSPECTED_FRAUD
                         break
