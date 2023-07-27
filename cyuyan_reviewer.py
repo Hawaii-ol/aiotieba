@@ -241,6 +241,38 @@ class MyReviewer(tb.Reviewer):
         self.update_user_credit = _update_user_credit_debug
 
 
+async def main(fname, debug: bool):
+    """
+    主函数
+
+    debug模式下，执行8页模拟审查，不会实际删封。
+    生产模式下，执行单页循环审查。如果是吧主，还会定期加精+取消加精指定贴子，防止因30天内不活跃而被撤职。
+    """
+    async with MyReviewer('default', fname) as reviewer:
+        if debug:
+            await reviewer.review_debug()
+        else:
+            async def bazhu_keepalive(tid, interval_day):
+                # 延迟10分钟后再执行，防止调试此文件时反复执行
+                await asyncio.sleep(600)
+                while True:
+                    LOG().info(f'执行定期吧主考核任务 forum={fname} tid={tid}')
+                    await reviewer.client.good(fname, tid)
+                    await reviewer.client.ungood(fname, tid)
+                    await asyncio.sleep(interval_day * 24 * 60 * 60)
+            
+            aws = []
+
+            bawu_config = CONFIG['Bawu']
+            is_bazhu = bawu_config.get('is_bazhu', False)
+            keepalive_tid = bawu_config.get('bazhu_keepalive_tid', 0)
+            interval_day = bawu_config.get('keepalive_interval_day', 0)
+            if is_bazhu and keepalive_tid and interval_day:
+                aws.append(asyncio.create_task(bazhu_keepalive(keepalive_tid, interval_day)))
+            
+            aws.append(asyncio.create_task(reviewer.review_loop()))
+            await asyncio.wait(aws)
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -251,14 +283,7 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    async def main():
-        async with MyReviewer('default', 'C语言') as reviewer:
-            if args.no_dbg:
-                await reviewer.review_loop()
-            else:
-                await reviewer.review_debug()
-
     try:
-        asyncio.run(main())
+        asyncio.run(main('C语言', not args.no_dbg))
     except KeyboardInterrupt:
         pass

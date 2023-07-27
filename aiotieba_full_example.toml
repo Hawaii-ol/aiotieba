@@ -17,7 +17,12 @@ STOKEN = ""
 [Bawu]
 # 是否吧主
 is_bazhu = true
-# 违规次数到达此阈值永久拉黑     
+# 用于定期完成吧主考核任务的贴子tid
+# 每隔一定天数自动将此贴子加精+取消加精一次
+bazhu_keepalive_tid = 0
+# 定期天数
+keepalive_interval_day = 3
+# 违规次数到达此阈值永久拉黑
 blacklist_violations = 6
 
 
