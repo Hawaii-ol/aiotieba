@@ -3,6 +3,7 @@ import pytest
 import aiotieba as tb
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2.0)
 @pytest.mark.asyncio
 async def test_Threads(client: tb.Client):
     fname = "starry"
@@ -12,14 +13,17 @@ async def test_Threads(client: tb.Client):
     forum = threads.forum
     assert forum.fid == 37574
     assert forum.fname == fname
+    assert forum.member_num > 0
+    assert forum.post_num > 0
+    assert forum.thread_num > 0
+    assert forum.has_bawu is True
+    assert forum.has_rule is False
 
     ##### Thread #####
     assert len(threads) >= 2
     for thread in threads:
-
         # Normal Thread
         if thread.tid == 8211419000:
-
             # UserInfo_t
             user = thread.user
             assert user.user_id > 0
@@ -28,6 +32,7 @@ async def test_Threads(client: tb.Client):
             assert user.nick_name_new != ''
             assert user.nick_name == user.nick_name_new
             assert user.show_name == user.nick_name_new
+            assert user.level > 0
             assert user.glevel > 0
             assert user.priv_like != 0
             assert user.priv_reply != 0

@@ -13,11 +13,11 @@ import types
 from collections.abc import Callable, Iterator
 from typing import List, Literal, Optional, Tuple, Union
 
-from ._logging import get_logger as LOG
+from .logging import get_logger as LOG
 from .client import Client
-from .client._classdef.enums import ReqUInfo
-from .client._classdef.misc import ForumInfoCache
-from .client._typing import Comment, Comments, Post, Posts, Thread, Threads, TypeUserInfo
+from .enums import ReqUInfo
+from .helper.cache import ForumInfoCache
+from .typing import Comment, Comments, Post, Posts, Thread, Threads, TypeUserInfo
 from .database import MySQLDB, SQLiteDB
 
 
@@ -53,7 +53,7 @@ class BaseReviewer(object):
     def __init__(self, BDUSS_key: Optional[str] = None, fname: str = ''):
         super(BaseReviewer, self).__init__()
 
-        self.client = Client(BDUSS_key)
+        self.client = Client(BDUSS_key, try_ws=False)
         self.db = MySQLDB(fname)
         self._db_sqlite: SQLiteDB = None
         self._img_hasher: "cv.img_hash.PHash" = None
@@ -65,7 +65,7 @@ class BaseReviewer(object):
         return self
 
     async def close(self) -> None:
-        await self.client.close()
+        await self.client.__aexit__()
         if self._db_sqlite is not None:
             self._db_sqlite.close()
         await self.db.close()
@@ -190,7 +190,6 @@ class BaseReviewer(object):
         with_comments: bool = False,
         comment_sort_by_agree: bool = True,
         comment_rn: int = 30,
-        is_fold: bool = False,
     ) -> Posts:
         """
         获取主题帖内回复
@@ -219,7 +218,6 @@ class BaseReviewer(object):
             with_comments=with_comments,
             comment_sort_by_agree=comment_sort_by_agree,
             comment_rn=comment_rn,
-            is_fold=is_fold,
         )
 
     async def get_comments(
@@ -229,7 +227,7 @@ class BaseReviewer(object):
         /,
         pn: int = 1,
         *,
-        is_floor: bool = False,
+        is_comment: bool = False,
     ) -> Comments:
         """
         获取楼中楼回复
@@ -238,13 +236,13 @@ class BaseReviewer(object):
             tid (int): 所在主题帖tid
             pid (int): 所在回复pid或楼中楼pid
             pn (int, optional): 页码. Defaults to 1.
-            is_floor (bool, optional): pid是否指向楼中楼. Defaults to False.
+            is_comment (bool, optional): pid是否指向楼中楼. Defaults to False.
 
         Returns:
             Comments: 楼中楼列表
         """
 
-        return await self.client.get_comments(tid, pid, pn, is_floor=is_floor)
+        return await self.client.get_comments(tid, pid, pn, is_comment=is_comment)
 
     async def block(
         self,
@@ -293,18 +291,19 @@ class BaseReviewer(object):
 
         return await self.client.del_thread(self.db.fname, tid)
 
-    async def del_post(self, pid: int) -> bool:
+    async def del_post(self, tid: int, pid: int) -> bool:
         """
         删除回复
 
         Args:
+            tid (int): 所在主题帖tid
             pid (int): 待删除的回复pid
 
         Returns:
             bool: True成功 False失败
         """
 
-        return await self.client.del_post(self.db.fname, pid)
+        return await self.client.del_post(self.db.fname, tid, pid)
 
     async def add_id(self, _id: int, *, id_last_edit: int = 0) -> bool:
         """
@@ -640,7 +639,10 @@ class Reviewer(BaseReviewer):
 
         if punish.del_flag == Ops.DELETE:
             LOG().info(f"Del {obj.__class__.__name__}. text={obj.text} user={obj.user!r} note={punish.note}")
-            await self.del_post(obj.pid)
+            if isinstance(obj, Thread):
+                await self.del_thread(obj.tid)
+            else:
+                await self.del_post(obj.tid, obj.pid)
         elif punish.del_flag == Ops.HIDE:
             LOG().info(f"Hide {obj.__class__.__name__}. text={obj.text} user={obj.user!r} note={punish.note}")
             await self.hide_thread(obj.tid)
@@ -1172,14 +1174,14 @@ class Reviewer(BaseReviewer):
 
         self.multi_prepare = types.MethodType(prepare_cfg_multi, self)
 
-    async def review_test(self, tid: Optional[int] = None, pid: Optional[int] = None, is_floor: bool = False) -> None:
+    async def review_test(self, tid: Optional[int] = None, pid: Optional[int] = None, is_comment: bool = False) -> None:
         """
         在单个实际目标上测试审查规则
 
         Args:
             tid (int, optional): 目标所在主题帖id. Defaults to None.
             pid (int, optional): 目标所在回复或楼中楼id. Defaults to None.
-            is_floor (bool, optional): pid是否指向一个楼中楼. Defaults to False.
+            is_comment (bool, optional): pid是否指向一个楼中楼. Defaults to False.
         """
 
         async def check_and_print(checkers, obj):
@@ -1189,8 +1191,8 @@ class Reviewer(BaseReviewer):
                 LOG().debug(f"Checker={checker.__name__} punish={punish}")
 
         if pid:
-            comments = await self.get_comments(tid, pid, is_floor=is_floor)
-            if is_floor:
+            comments = await self.get_comments(tid, pid, is_comment=is_comment)
+            if is_comment:
                 for comment in comments:
                     if comment.pid == pid:
                         break

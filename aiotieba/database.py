@@ -7,9 +7,9 @@ from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
 import aiomysql
 
-from ._config import CONFIG
-from ._logging import get_logger as LOG
-from .client._classdef import UserInfo
+from .config import CONFIG
+from .logging import get_logger as LOG
+from .api._classdef import UserInfo
 
 
 def exec_handler_MySQL(create_table_func: Callable, default_ret: Any):

@@ -1,13 +1,14 @@
 import argparse
 import asyncio
-import httpx
+import aiohttp
 import re
 import pathlib
 from typing import Optional, Union, List
 
 import aiotieba as tb
-from aiotieba._config import CONFIG
-from aiotieba._logging import get_logger as LOG
+from aiotieba.config import CONFIG
+from aiotieba.logging import get_logger as LOG
+from aiotieba.typing import Thread, Post, Comment
 from aiotieba.database import FraudTypes, UserInfo
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
@@ -96,24 +97,24 @@ class MyReviewer(tb.Reviewer):
             days = min(10, max_days)
         return tb.Punish(op, block_days=days, note=note)
 
-    async def check_thread(self, thread: tb.Thread) -> Optional[tb.Punish]:
+    async def check_thread(self, thread: Thread) -> Optional[tb.Punish]:
         """检查主题贴是否为广告性质"""
         # 防止误删吧务、置顶贴、加精贴等
         if thread.user.is_bawu or thread.is_top or thread.is_good or thread.tid in self.exclude_tids:
             return
         punish = False
         # 机器学习判断广告内容
-        async with httpx.AsyncClient() as client:
-            r = await client.post(antispammer_url, data={'text': thread.text})
-            if r.text == 'spam':
-                punish = True
+        async with aiohttp.ClientSession() as session:
+            async with session.post(antispammer_url, data={'text': thread.text}) as r:
+                if await r.text() == 'spam':
+                    punish = True
         if punish:
             uc = await self.db.get_user_credit(thread.user)
             violations = uc.violations + 1 if uc else 1
             await self.update_user_credit(thread.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
-    async def check_post(self, post: tb.Post) -> Optional[tb.Punish]:
+    async def check_post(self, post: Post) -> Optional[tb.Punish]:
         """检查回复中的违禁词"""
         # 防止误删
         if post.user.is_bawu or post.tid in self.exclude_tids:
@@ -129,10 +130,10 @@ class MyReviewer(tb.Reviewer):
             await self.update_user_credit(post.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
-    async def check_comment(self, comment: tb.Comment) -> Optional[tb.Punish]:
+    async def check_comment(self, comment: Comment) -> Optional[tb.Punish]:
         return
 
-    async def check_fraud(self, obj: Union[tb.Post, tb.Comment]) -> Optional[tb.Punish]:
+    async def check_fraud(self, obj: Union[Post, Comment]) -> Optional[tb.Punish]:
         """检查回复是否涉嫌诈骗"""
         # 防止误删
         if obj.user.is_bawu or obj.tid in self.exclude_tids or obj.is_thread_author:
@@ -165,21 +166,21 @@ class MyReviewer(tb.Reviewer):
                 fraud_type = FraudTypes.CONFIRMED_FRAUD
                 break
             # 检查发言是否为加q私聊等接单性质
-            async with httpx.AsyncClient() as client:
-                r = await client.post(antifraud_url, data={'text': obj.text})
-                if r.text == 'spam':
-                    # 7级以下的账号一律按疑似诈骗处理
-                    if obj.user.level < 7:
-                        punish = True
-                        fraud_type = FraudTypes.SUSPECTED_FRAUD
-                        break
+            async with aiohttp.ClientSession() as session:
+                async with session.post(antifraud_url, data={'text': obj.text}) as r:
+                    if await r.text() == 'spam':
+                        # 7级以下的账号一律按疑似诈骗处理
+                        if obj.user.level < 7:
+                            punish = True
+                            fraud_type = FraudTypes.SUSPECTED_FRAUD
+                            break
         if punish:
             uc = await self.db.get_user_credit(obj.user)
             violations = uc.violations + 1 if uc else 1
             await self.update_user_credit(obj.user, fraud_type)
             return self.make_punish(tb.Ops.DELETE, violations, fraud_type)
 
-    async def check_img(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
+    async def check_img(self, obj: Union[Thread, Post, Comment]) -> Optional[tb.Punish]:
         """检查违规图片"""
         punish = False
         for img_content in obj.contents.imgs:
@@ -209,7 +210,7 @@ class MyReviewer(tb.Reviewer):
             await self.update_user_credit(obj.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
     
-    async def check_blacklist(self, obj: Union[tb.Thread, tb.Post, tb.Comment]) -> Optional[tb.Punish]:
+    async def check_blacklist(self, obj: Union[Thread, Post, Comment]) -> Optional[tb.Punish]:
         """
         以下用户发言一律删封：
         1.违规次数达到或超过blacklist_violations
@@ -252,6 +253,8 @@ async def main(fname, debug: bool):
         if debug:
             await reviewer.review_debug()
         else:
+            tb.logging.enable_filelog()
+            
             async def bazhu_keepalive(tid, interval_day):
                 # 延迟10分钟后再执行，防止调试此文件时反复执行
                 await asyncio.sleep(600)

@@ -72,6 +72,7 @@ def print_uinfo(user):
     print(f'吧龄(年): {user.age}')
 
 if __name__ == '__main__':
+    tb.logging.enable_filelog()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-t','--cred_type',

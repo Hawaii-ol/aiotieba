@@ -3,65 +3,87 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-urls = { Repository = "https://github.com/Starry-OvO/aiotieba/", Documentation = "https://v-8.top/" }
 name = "aiotieba"
 description = "Asynchronous I/O Client for Baidu Tieba"
-readme = "README.md"
-requires-python = ">=3.9"
 authors = [{ name = "Starry-OvO", email = "starry.qvq@gmail.com" }]
-keywords = ["tieba", "crawler", "spider"]
+urls = { Repository = "https://github.com/Starry-OvO/aiotieba/", Documentation = "https://aiotieba.cc/" }
+readme = "README.md"
+keywords = ["baidu", "tieba"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Framework :: AsyncIO",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: The Unlicense (Unlicense)",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Internet :: WWW/HTTP :: Session",
+  "Development Status :: 4 - Beta",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: The Unlicense (Unlicense)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Internet :: WWW/HTTP :: Session",
 ]
+requires-python = ">=3.8"
 dependencies = [
-    "aiomysql<0.2,>=0.1.0",
-    "beautifulsoup4<5,>=4.0.0",
-    "httpx<0.24,>=0.23.0",
-    "httpx_ws<0.3,>=0.2.2",
-    "lxml<5,>=4.0.0",
-    "opencv-contrib-python-headless<4.8,>=4.6.0.66",
-    "protobuf<5,>=4.12.0",
-    "pycryptodome<4,>=3.0.0",
-    "pysimdjson<5.1,>=5.0.0",
-    "tomli<3,>=2.0.0;python_version<'3.11'",
+  "aiohttp<3.9,>=3.8.4;python_version=='3.8'",
+  "aiohttp<4,>=3.8.4;python_version>='3.9'",           # See https://github.com/aio-libs/aiohttp/pull/6638
+  "beautifulsoup4<4.13,>=4.4.1;python_version=='3.8'",
+  "beautifulsoup4<5,>=4.5.2;python_version=='3.9'",
+  "beautifulsoup4<5,>=4.7.1;python_version>='3.10'",
+  "lxml<4.10,>=4.4.1;python_version=='3.8'",
+  "lxml<5,>=4.6.0;python_version=='3.9'",
+  "lxml<5,>=4.6.4;python_version=='3.10'",
+  "lxml<5,>=4.9.2;python_version>='3.11'",
+  "protobuf<5,>=4.21.0",
+  "pycryptodome<3.19,>=3.7.1;python_version=='3.8'",
+  "pycryptodome<4,>=3.7.1;python_version>='3.8'",
+  "tomli<3,>=1.1.0;python_version<'3.11'",
 ]
 dynamic = ["version"]
 
-[tool.setuptools.packages.find]
-include = ["aiotieba*"]
+[project.optional-dependencies]
+img = [
+  "opencv-contrib-python-headless<4.9,>=4.6.0.66;sys_platform=='linux'",
+  "opencv-contrib-python<4.9,>=4.6.0.66;sys_platform!='linux'",
+]
+speedup = [
+  "aiodns<4,>=3.0.0",
+  "pysimdjson<5.1,>=2.1.0;python_version=='3.8' and sys_platform=='linux'",
+  "pysimdjson<5.1,>=2.0.10;python_version=='3.8' and sys_platform=='darwin'",
+  "pysimdjson<5.1,>=2.0.10;python_version=='3.8'",
+  "pysimdjson<6,>=3.2.0;python_version=='3.9' and sys_platform=='linux'",
+  "pysimdjson<6,>=3.1.1;python_version=='3.9' and sys_platform=='darwin'",
+  "pysimdjson<6,>=3.1.1;python_version=='3.9'",
+  "pysimdjson<6,>=4.0.3;python_version=='3.10'",
+  "pysimdjson<6,>=5.0.1;python_version>='3.11'",
+  "uvloop<0.18,>=0.14.0;python_version=='3.8' and sys_platform!='win32'",
+  "uvloop<0.18,>=0.15.0;python_version=='3.9' and sys_platform!='win32'",
+  "uvloop<0.18,>=0.16.0;python_version=='3.10' and sys_platform!='win32'",
+  "uvloop<0.18,>=0.17.0;python_version>='3.11' and sys_platform!='win32'",
+]
 
-[tool.setuptools.package-data]
-"aiotieba.config_example" = ["*.toml"]
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.setuptools.dynamic]
 version = { attr = "aiotieba.__version__.__version__" }
 
+[tool.setuptools.package-data]
+"*" = ["*.pyi"]
+
 [tool.black]
 line-length = 120
 skip-string-normalization = true
-extend-exclude = ["*_pb2.py"]
-target-version = ["py39"]
-
-[tool.isort]
-profile = "black"
-line_length = 120
-py_version = "39"
-extend_skip_glob = ["*_pb2.py"]
+target-version = ["py38"]
 
 [tool.ruff]
 line-length = 120
 select = ["W", "E", "F", "I"]
 ignore = ["E402", "E501"]
-target-version = "py39"
-extend-exclude = ["*_pb2.py"]
+target-version = "py38"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+"typing.py" = ["F401"]
+"*_pb2.py" = ["F401"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

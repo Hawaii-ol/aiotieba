@@ -1,27 +1,23 @@
-*/
-*.toml
-*.exe
-*.csv
-*.xlsx
-*.txt
-*.bin
-*.zip
-*.rar
-*.md
-*.cmd
-*.jpg
+*
 
-*.py
+!.clang-format
+!.gitattributes
+!.gitignore
+!LICENSE
+!mkdocs.yml
+!pyproject.toml
+!README.md
+!setup.py
 
 !aiotieba
 !aiotieba/**
 !aiotieba_full_example.toml
 !.github
 !.github/**
+!aiotieba
+!aiotieba/**
 !docs
 !docs/**
-!examples
-!examples/**
 !tests
 !tests/**
 

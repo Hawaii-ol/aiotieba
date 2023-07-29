@@ -4,34 +4,69 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
 
 jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel -qq
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* pp38-*	pp39-*"
+          CIBW_SKIP: "*-win32 *_i686 *_s390x *_ppc64le"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: ./wheelhouse/*.whl
+
   publish:
     name: Publish
+    needs: build_wheels
     runs-on: ubuntu-latest
 
     environment:
-       name: publish
+      name: publish
 
     env:
       PYTHON_VER: "3.11"
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Set up Python ${{ env.PYTHON_VER }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VER }}
 
-    - name: Set up Python ${{ env.PYTHON_VER }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VER }}
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip -qq
+          pip install -U twine -qq
 
-    - name: Install dependencies
-      run: |
-        python -m pip install -U pip
-        pip install -U wheel build setuptools twine
+      - name: Download distributions
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist
 
-    - name: Build Package
-      run: python -m build
+      - name: Publish to PyPI
+        if: ${{ github.event_name == 'push' }}
+        run: twine upload dist/* -u __token__ -p ${{ secrets.PYPI_TOKEN }} --disable-progress-bar
 
-    - name: Publish to PyPI
-      run: twine upload dist/* -u __token__ -p ${{ secrets.PYPI_TOKEN }}
+      - name: Publish to TestPyPI
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: twine upload -r testpypi dist/* -u __token__ -p ${{ secrets.TESTPYPI_TOKEN }} --disable-progress-bar

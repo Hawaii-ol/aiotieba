@@ -5,7 +5,7 @@ import aiomysql
 import aiotieba
 import pathlib
 from typing import List
-from aiotieba._config import CONFIG
+from aiotieba.config import CONFIG
 
 async def collect_alt_uinfo():
     portraits = await collect_alt_portraits()

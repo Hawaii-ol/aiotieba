@@ -3,6 +3,7 @@ import pytest
 import aiotieba as tb
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2.0)
 @pytest.mark.asyncio
 async def test_Posts(client: tb.Client):
     posts = await client.get_posts(8211419000)
@@ -11,6 +12,8 @@ async def test_Posts(client: tb.Client):
     forum = posts.forum
     assert forum.fid == 37574
     assert forum.fname == 'starry'
+    assert forum.member_num > 0
+    assert forum.post_num > 0
 
     ##### Thread_p #####
     thread = posts.thread
@@ -25,7 +28,6 @@ async def test_Posts(client: tb.Client):
     assert user.show_name == user.nick_name_new
     assert user.level > 0
     assert user.glevel > 0
-    assert user.fan_num > 0
     assert user.ip != ''
     assert user.priv_like != 0
     assert user.priv_reply != 0
@@ -47,10 +49,10 @@ async def test_Posts(client: tb.Client):
     assert thread.tid > 0
     assert thread.pid == posts[0].pid
     assert thread.author_id == posts[0].user.user_id
+    assert thread.view_num > 0
     assert thread.reply_num > 0
     assert thread.share_num > 0
     assert thread.create_time > 0
-    assert thread.last_time > 0
 
     ##### Post #####
     assert len(posts) >= 2
@@ -75,7 +77,7 @@ async def test_Posts(client: tb.Client):
     assert post.fname != ''
     assert post.tid > 0
     assert post.pid > 0
-    assert post.author_id==user.user_id
+    assert post.author_id == user.user_id
     assert post.floor > 0
     assert post.reply_num > 0
     assert post.create_time > 0
@@ -125,6 +127,7 @@ async def test_Posts(client: tb.Client):
     assert frag.is_external is True
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2.0)
 @pytest.mark.asyncio
 async def test_ShareThread_pt(client: tb.Client):
     posts = await client.get_posts(7905926315)
@@ -136,7 +139,7 @@ async def test_ShareThread_pt(client: tb.Client):
     assert sthread.author_id > 0
     assert sthread.fid == 24677608
     assert sthread.fname == 'soulknight'
-    assert sthread.tid >0
+    assert sthread.tid > 0
 
     # VoteInfo
     vote_info = sthread.vote_info

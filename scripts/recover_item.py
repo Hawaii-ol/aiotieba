@@ -22,6 +22,7 @@ async def recover_pid(fname, pid):
         await reviewer.add_id(pid)
 
 if __name__ == '__main__':
+    tb.logging.enable_filelog()
     parser = argparse.ArgumentParser(
         description='恢复被删除或屏蔽的主题贴/回复贴/楼中楼，并添加到已审核列表，防止再次误删',
     )
