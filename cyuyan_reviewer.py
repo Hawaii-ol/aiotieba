@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import aiohttp
+import datetime
 import re
 import pathlib
 from typing import Optional, Union, List
@@ -101,6 +102,10 @@ class MyReviewer(tb.Reviewer):
         """检查主题贴是否为广告性质"""
         # 防止误删吧务、置顶贴、加精贴等
         if thread.user.is_bawu or thread.is_top or thread.is_good or thread.tid in self.exclude_tids:
+            return
+        # 跳过超过一年(近似为365天)的贴子
+        td = datetime.datetime.utcnow() - datetime.datetime.utcfromtimestamp(thread.create_time)
+        if td > datetime.timedelta(days=365):
             return
         punish = False
         # 机器学习判断广告内容
