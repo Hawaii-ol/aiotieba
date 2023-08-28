@@ -41,3 +41,7 @@ java调c需要c去写库给java调，官网有jni的文档可以看看，或者�
 我可以帮你看下
 你new了多少析构时delete多少就行
 数据结构跟这个关系不大，你说算法都比这个更有联系些
+建议扣01，编译器都省了
+别用vc++6.0了 换个IDE
+#include <math.h> #include <time.h> #include <set> #include <queue> #include <vector> #include <map> #include <stack> #include <fstream> #include <algorithm> #include <string> #include <cstring> #include <iostream> #include <stdio.h> #include <bitset> using namespace std; int main()
+力扣今天的每日一题数中距离之和,有没有大佬帮我捉捉虫
