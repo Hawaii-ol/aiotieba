@@ -45,3 +45,8 @@ java调c需要c去写库给java调，官网有jni的文档可以看看，或者�
 别用vc++6.0了 换个IDE
 #include <math.h> #include <time.h> #include <set> #include <queue> #include <vector> #include <map> #include <stack> #include <fstream> #include <algorithm> #include <string> #include <cstring> #include <iostream> #include <stdio.h> #include <bitset> using namespace std; int main()
 力扣今天的每日一题数中距离之和,有没有大佬帮我捉捉虫
+读入字符串s; 交换s[0]和s[2]; q=atoi(s); 输出q
+我是c语言吧吧主助手，您的发言含有特殊关键词，特警告一次。发贴千百度，文明第一步。
+编程效率上都浪费生命 参考虚幻的u++，c++魔改版 以及系统内核的c实现
+是的，C语言是全世界最好的语言，至于C++，我的评价和linus一样玩，C++垃圾语言罢了
+我学c++就是为了图形学和游戏的
