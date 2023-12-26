@@ -1,10 +1,11 @@
-# 脚本功能：根据用户凭据查询用户详细信息
+# 脚本功能：根据用户凭据查询用户详细信息及违规记录
 import __init__
 import asyncio
 import aiotieba
 import argparse
+from cyuyan_reviewer import MyReviewer, FraudTypes
 
-async def main(credential, cred_type=None):
+async def main(fname, credential, cred_type=None):
     if not cred_type:
         try:
             credential = int(credential)
@@ -30,6 +31,7 @@ async def main(credential, cred_type=None):
         except ValueError:
             print(f"{cred_type} must be an integer, not '{credential}'.")
             exit(1)
+    
     async with aiotieba.Client('default') as client:
         if cred_type == 'tieba_uid':
             user = await client.tieba_uid2user_info(credential)
@@ -37,6 +39,18 @@ async def main(credential, cred_type=None):
         else:
             user = await client.get_user_info(credential)
         print_uinfo(user)
+    
+    async with MyReviewer('default', fname) as reviewer:
+        uc = await reviewer.db.get_user_credit(user)
+        print('=' * 50)
+        if uc:
+            print('违规记录')
+            print(f'违规次数: {uc.violations}')
+            print(f'违规类型: {uc.fraud_type.name}')
+            print(f'上次违规: {getattr(uc, "last_record", "无")}')
+            print(f'黑名单用户: {"是" if uc.violations >= reviewer.blacklist_violations or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD else "否"}')
+        else:
+            print('暂无违规记录')
 
 def print_uinfo(user):
     print(f'user_id: {user.user_id}')
@@ -60,4 +74,4 @@ if __name__ == '__main__':
     )
     parser.add_argument('credential')
     args = parser.parse_args()
-    asyncio.run(main(args.credential, args.cred_type))
+    asyncio.run(main('C语言', args.credential, args.cred_type))
