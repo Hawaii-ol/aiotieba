@@ -740,6 +740,7 @@ class Reviewer(BaseReviewer):
         last_edit_time = await self.get_id(thread.tid)
         if last_edit_time == -1:
             await self.set_thread_level(thread)
+            await self.add_id(thread.tid, id_last_edit=thread.last_time)
             if punish := await self.run_thread_checkers(thread):
                 return punish
         elif thread.last_time == last_edit_time:
@@ -834,6 +835,7 @@ class Reviewer(BaseReviewer):
         if post.reply_num == last_reply_num:
             return
         elif last_reply_num == -1:
+            await self.add_id(post.pid, id_last_edit=post.reply_num)
             if punish := await self.run_post_checkers(post):
                 return punish
         elif post.reply_num < last_reply_num:
@@ -915,10 +917,10 @@ class Reviewer(BaseReviewer):
 
         if await self.get_id(comment.pid) != -1:
             return
+        await self.add_id(comment.pid)
         if punish := await self.run_comment_checkers(comment):
             return punish
 
-        await self.add_id(comment.pid)
 
     async def run_comment_checkers(self, comment: Comment) -> Optional[Punish]:
         """
