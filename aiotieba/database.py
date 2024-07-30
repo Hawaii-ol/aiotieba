@@ -327,10 +327,6 @@ class MySQLDB(object):
         Returns:
             bool: True成功 False失败
         """
-        if ts:
-            last_record = f'"{datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")}"'
-        else:
-            last_record = 'CURRENT_TIMESTAMP()'
         async with self._pool.acquire() as conn:
             try:
                 await conn.begin()
@@ -338,19 +334,23 @@ class MySQLDB(object):
                     await cursor.execute("SELECT `violations`, `fraud_type`, `blacklisted` FROM `user_credit` WHERE `user_id`=%s FOR UPDATE", (user.user_id,))
                     if res_tuple := await cursor.fetchone():
                         credit = UserCredit(user, *res_tuple)
-                        update_fields = {
-                            'violations': credit.violations + 1,
-                            'last_record': last_record
-                        }
+                        if ts:
+                            last_record = datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)
+                        else:
+                            last_record = datetime.datetime.now(datetime.timezone.utc)
+                        update_tuple = [
+                            ('violations', credit.violations + 1),
+                            ('last_record', last_record)
+                        ]
                         if int(fraud_type) > int(credit.fraud_type):
-                            update_fields['fraud_type'] = int(fraud_type)
+                            update_tuple.append(('fraud_type', int(fraud_type)))
                         if blacklisted and not credit.blacklisted:
-                            update_fields['blacklisted'] = 1
-                        uf = ','.join(f"`{k}`=%s" for k in update_fields.keys())
-                        params = list(update_fields.values())
-                        params.append(user.user_id)
-                        sql = f"UPDATE `user_credit` SET {uf} WHERE `user_id`=%s"
-                        LOG().info(sql)
+                            update_tuple.append(('blacklisted', 1))
+                        fields, params = zip(*update_tuple)
+                        fields = ','.join(f"`{k}`=%s" for k in fields)
+                        params += (user.user_id,)
+                        sql = f"UPDATE `user_credit` SET {fields} WHERE `user_id`=%s"
+                        LOG().info(sql, params)
                         await cursor.execute(sql, params)
                     else:
                         await cursor.execute(

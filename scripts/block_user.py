@@ -54,13 +54,15 @@ async def main(fname, credential, cred_type=None):
                     uc = await reviewer.db.get_user_credit(user)
                     violations = uc.violations + 1 if uc else 1
                     if reason == 4:
-                        punish = reviewer.make_punish(tb.Ops.NORMAL, violations, FraudTypes.NOT_FRAUD, True)
+                        fraud_type = FraudTypes.NOT_FRAUD
+                        blacklisted = True
                     else:
                         fraud_type = FraudTypes(reason - 1)
-                        punish = reviewer.make_punish(tb.Ops.NORMAL, violations, fraud_type)
+                        blacklisted = False
+                    punish = reviewer.make_punish(tb.Ops.NORMAL, violations, fraud_type, blacklisted)
                     note = punish.note
                     print(note)
-                    await reviewer.db.add_user_credit(user, fraud_type)
+                    await reviewer.db.add_user_credit(user, fraud_type, blacklisted)
                     await reviewer.block(user.portrait, day=max(punish.block_days, 1), reason=note)
                 except ValueError:
                     print('Invalid choice.')
