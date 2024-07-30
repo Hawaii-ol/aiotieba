@@ -283,7 +283,7 @@ class MySQLDB(object):
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"SELECT `violations`, `fraud_type`, `blacklisted` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
+                    await cursor.execute(f"SELECT `violations`, `fraud_type`, `blacklisted`, `last_record` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
         except aiomysql.Error as err:
             LOG().warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return None

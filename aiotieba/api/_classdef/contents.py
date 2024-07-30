@@ -46,16 +46,34 @@ class FragEmoji(object):
     表情碎片
 
     Attributes:
+        id (str): 表情图片id
         desc (str): 表情描述
     """
 
-    __slots__ = ['_desc']
+    __slots__ = [
+        '_id',
+        '_desc',
+    ]
 
     def __init__(self, data_proto: TypeMessage) -> None:
+        self._id = data_proto.text
         self._desc = data_proto.c
 
     def __repr__(self) -> str:
-        return str({'desc': self.desc})
+        return str(
+            {
+                'id': self._id,
+                'desc': self._desc,
+            }
+        )
+
+    @property
+    def id(self) -> str:
+        """
+        表情图片id
+        """
+
+        return self._id
 
     @property
     def desc(self) -> str:
@@ -67,6 +85,13 @@ class FragEmoji(object):
 
 
 class TypeFragEmoji(Protocol):
+    @property
+    def id(self) -> str:
+        """
+        表情图片id
+        """
+        ...
+
     @property
     def desc(self) -> str:
         """
@@ -274,6 +299,227 @@ class TypeFragAt(Protocol):
     def user_id(self) -> int:
         """
         被@用户的user_id
+        """
+        ...
+
+
+class FragVoice(object):
+    """
+    音频碎片
+
+    Attributes:
+        md5 (str): 音频md5
+        duration (int): 音频长度
+    """
+
+    __slots__ = [
+        '_md5',
+        '_duration',
+    ]
+
+    def _init(self, data_proto: TypeMessage) -> "FragVoice":
+        voice_md5 = data_proto.voice_md5
+        self._md5 = voice_md5[: voice_md5.rfind('_')]
+        self._duration = data_proto.during_time / 1000
+        return self
+
+    def _init_null(self) -> "FragVoice":
+        self._md5 = ''
+        self._duration = 0
+        return self
+
+    def __repr__(self) -> str:
+        return str({'md5': self._md5})
+
+    def __bool__(self) -> bool:
+        return bool(self._md5)
+
+    @property
+    def md5(self) -> str:
+        """
+        音频md5
+        """
+
+        return self._md5
+
+    @property
+    def duration(self) -> int:
+        """
+        音频长度
+
+        Note:
+            以秒为单位
+        """
+
+        return self._duration
+
+
+class TypeFragVoice(Protocol):
+    @property
+    def md5(self) -> str:
+        """
+        音频md5
+        """
+        ...
+
+    @property
+    def duration(self) -> int:
+        """
+        音频长度
+
+        Note:
+            以秒为单位
+        """
+        ...
+
+
+class FragVideo(object):
+    """
+    视频碎片
+
+    Attributes:
+        src (str): 视频链接
+        cover_src (str): 封面链接
+        duration (int): 视频长度
+        width (int): 视频宽度
+        height (int): 视频高度
+        view_num (int): 浏览次数
+    """
+
+    __slots__ = [
+        '_src',
+        '_cover_src',
+        '_duration',
+        '_width',
+        '_height',
+        '_view_num',
+    ]
+
+    def _init(self, data_proto: TypeMessage) -> "FragVideo":
+        self._src = data_proto.video_url
+        self._cover_src = data_proto.thumbnail_url
+        self._duration = data_proto.video_duration
+        self._width = data_proto.video_width
+        self._height = data_proto.video_height
+        self._view_num = data_proto.play_count
+        return self
+
+    def _init_null(self) -> "FragVideo":
+        self._src = ''
+        self._cover_src = ''
+        self._duration = 0
+        self._width = 0
+        self._height = 0
+        self._view_num = 0
+        return self
+
+    def __repr__(self) -> str:
+        return str(
+            {
+                'cover_src': self._cover_src,
+                'width': self._width,
+                'height': self._height,
+            }
+        )
+
+    def __bool__(self) -> bool:
+        return bool(self._width)
+
+    @property
+    def src(self) -> str:
+        """
+        视频链接
+        """
+
+        return self._src
+
+    @property
+    def cover_src(self) -> str:
+        """
+        封面链接
+        """
+
+        return self._cover_src
+
+    @property
+    def duration(self) -> int:
+        """
+        视频长度
+
+        Note:
+            以秒为单位
+        """
+
+        return self._duration
+
+    @property
+    def width(self) -> int:
+        """
+        视频宽度
+        """
+
+        return self._width
+
+    @property
+    def height(self) -> int:
+        """
+        视频高度
+        """
+
+        return self._height
+
+    @property
+    def view_num(self) -> int:
+        """
+        浏览次数
+        """
+
+        return self._view_num
+
+
+class TypeFragVideo(Protocol):
+    @property
+    def src(self) -> str:
+        """
+        视频链接
+        """
+        ...
+
+    @property
+    def cover_src(self) -> str:
+        """
+        封面链接
+        """
+        ...
+
+    @property
+    def duration(self) -> int:
+        """
+        视频长度
+
+        Note:
+            以秒为单位
+        """
+        ...
+
+    @property
+    def width(self) -> int:
+        """
+        视频宽度
+        """
+        ...
+
+    @property
+    def height(self) -> int:
+        """
+        视频高度
+        """
+        ...
+
+    @property
+    def view_num(self) -> int:
+        """
+        浏览次数
         """
         ...
 
@@ -495,36 +741,5 @@ class TypeFragItem(Protocol):
     def text(self) -> str:
         """
         item名称
-        """
-        ...
-
-
-class FragmentUnknown(object):
-    """
-    未知碎片
-    """
-
-    __slots__ = ['_data']
-
-    def __init__(self, data=None) -> None:
-        self._data = data
-
-    def __repr__(self) -> str:
-        return str({'data': self._data})
-
-    @property
-    def data(self):
-        """
-        原始数据
-        """
-
-        return self._data
-
-
-class TypeFragmentUnknown(Protocol):
-    @property
-    def data(self):
-        """
-        原始数据
         """
         ...

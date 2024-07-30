@@ -93,7 +93,8 @@ async def test_Posts(client: tb.Client):
     assert frag.user_id > 0
 
     # FragVoice
-    assert post.contents.has_voice is True
+    frag = post.contents.voice
+    assert frag.md5 != ''
 
     # FragImage
     frag = post.contents.imgs[0]
@@ -106,6 +107,7 @@ async def test_Posts(client: tb.Client):
 
     # FragEmoji
     frag = post.contents.emojis[0]
+    assert frag.id == 'image_emoticon3'
     assert frag.desc != ''
 
     # FragTiebaplus
@@ -126,19 +128,31 @@ async def test_Posts(client: tb.Client):
     assert frag.url.host == "stackoverflow.com"
     assert frag.is_external is True
 
+    # Posts with video
+    posts = await client.get_posts(6205407601)
+
+    # FragVideo
+    frag = posts.thread.contents.video
+    assert frag.src != ''
+    assert frag.cover_src != ''
+    assert frag.duration > 0
+    assert frag.width > 0
+    assert frag.height > 0
+    assert frag.view_num > 0
+
 
 @pytest.mark.flaky(reruns=3, reruns_delay=2.0)
 @pytest.mark.asyncio
 async def test_ShareThread_pt(client: tb.Client):
-    posts = await client.get_posts(7905926315)
+    posts = await client.get_posts(8213449397)
 
     ##### ShareThread_pt #####
     sthread = posts.thread.share_origin
     assert sthread.text != ''
     assert sthread.title != ''
     assert sthread.author_id > 0
-    assert sthread.fid == 24677608
-    assert sthread.fname == 'soulknight'
+    assert sthread.fid == 37574
+    assert sthread.fname == 'starry'
     assert sthread.tid > 0
 
     # VoteInfo
@@ -160,7 +174,9 @@ async def test_ShareThread_pt(client: tb.Client):
     assert frag.user_id > 0
 
     # FragVoice
-    assert sthread.contents.has_voice is True
+    frag = sthread.contents.voice
+    assert frag.md5 != ''
+    assert frag.duration > 0
 
     # FragImage
     frag = sthread.contents.imgs[0]

@@ -9,13 +9,11 @@
 !README.md
 !setup.py
 
-!aiotieba
-!aiotieba/**
-!aiotieba_full_example.toml
 !.github
 !.github/**
 !aiotieba
 !aiotieba/**
+!aiotieba_full_example.toml
 !docs
 !docs/**
 !tests
@@ -35,5 +33,5 @@
 *.pyproj
 *.log
 *.code-workspace
-*.pyc
+*.py[cd]
 __pycache__

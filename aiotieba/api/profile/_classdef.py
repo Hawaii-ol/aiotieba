@@ -1,13 +1,14 @@
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 from .._classdef import Containers, TypeMessage, VoteInfo
-from .._classdef.contents import FragAt, FragEmoji, FragLink, FragmentUnknown, FragText, TypeFragment, TypeFragText
+from .._classdef.contents import FragAt, FragEmoji, FragLink, FragText, FragVideo, FragVoice, TypeFragment, TypeFragText
 
-FragAt_pf = FragAt
-FragEmoji_pf = FragEmoji
-FragLink_pf = FragLink
-FragmentUnknown_pf = FragmentUnknown
 FragText_pf = FragText
+FragEmoji_pf = FragEmoji
+FragAt_pf = FragAt
+FragLink_pf = FragLink
+FragVideo_pf = FragVideo
+FragVoice_pf = FragVoice
 
 
 class VirtualImage_pf(object):
@@ -40,8 +41,8 @@ class VirtualImage_pf(object):
     def __repr__(self) -> str:
         return str(
             {
-                'enabled': self.enabled,
-                'state': self.state,
+                'enabled': self._enabled,
+                'state': self._state,
             }
         )
 
@@ -80,6 +81,7 @@ class UserInfo_pf(object):
         gender (int): 性别
         age (float): 吧龄
         post_num (int): 发帖数
+        agree_num (int): 获赞数
         fan_num (int): 粉丝数
         follow_num (int): 关注数
         forum_num (int): 关注贴吧数
@@ -88,7 +90,6 @@ class UserInfo_pf(object):
         icons (list[str]): 印记信息
         vimage (VirtualImage_pf): 虚拟形象信息
 
-        is_bawu (bool): 是否吧务
         is_vip (bool): 是否超级会员
         is_god (bool): 是否大神
         is_blocked (bool): 是否被永久封禁屏蔽
@@ -110,6 +111,7 @@ class UserInfo_pf(object):
         '_gender',
         '_age',
         '_post_num',
+        '_agree_num',
         '_fan_num',
         '_follow_num',
         '_forum_num',
@@ -117,7 +119,6 @@ class UserInfo_pf(object):
         '_icons',
         '_vimage',
         '_ip',
-        '_is_bawu',
         '_is_vip',
         '_is_god',
         '_is_blocked',
@@ -127,30 +128,36 @@ class UserInfo_pf(object):
 
     def __init__(self, data_proto: Optional[TypeMessage] = None) -> None:
         if data_proto:
-            self._user_id = data_proto.id
-            if '?' in (portrait := data_proto.portrait):
+            user_proto = data_proto.user
+            self._user_id = user_proto.id
+            if '?' in (portrait := user_proto.portrait):
                 self._portrait = portrait[:-13]
             else:
                 self._portrait = portrait
-            self._user_name = data_proto.name
-            self._nick_name_new = data_proto.name_show
-            self._tieba_uid = int(tieba_uid) if (tieba_uid := data_proto.tieba_uid) else 0
-            self._glevel = data_proto.user_growth.level_id
-            self._gender = data_proto.sex
-            self._age = float(age) if (age := data_proto.tb_age) else 0.0
-            self._post_num = data_proto.post_num
-            self._fan_num = data_proto.fans_num
-            self._follow_num = data_proto.concern_num
-            self._forum_num = data_proto.my_like_num
-            self._sign = data_proto.intro
-            self._ip = data_proto.ip_address
-            self._icons = [name for i in data_proto.iconinfo if (name := i.name)]
-            self._vimage = VirtualImage_pf()._init(data_proto.virtual_image_info)
-            self._is_bawu = bool(data_proto.is_bawu)
-            self._is_vip = bool(data_proto.new_tshow_icon)
-            self._is_god = bool(data_proto.new_god_data.status)
-            self._priv_like = priv_like if (priv_like := data_proto.priv_sets.like) else 1
-            self._priv_reply = priv_reply if (priv_reply := data_proto.priv_sets.reply) else 1
+            self._user_name = user_proto.name
+            self._nick_name_new = user_proto.name_show
+            self._tieba_uid = int(tieba_uid) if (tieba_uid := user_proto.tieba_uid) else 0
+            self._glevel = user_proto.user_growth.level_id
+            self._gender = user_proto.sex
+            self._age = float(age) if (age := user_proto.tb_age) else 0.0
+            self._post_num = user_proto.post_num
+            self._agree_num = data_proto.user_agree_info.total_agree_num
+            self._fan_num = user_proto.fans_num
+            self._follow_num = user_proto.concern_num
+            self._forum_num = user_proto.my_like_num
+            self._sign = user_proto.intro
+            self._ip = user_proto.ip_address
+            self._icons = [name for i in user_proto.iconinfo if (name := i.name)]
+            self._vimage = VirtualImage_pf()._init(user_proto.virtual_image_info)
+            self._is_vip = bool(user_proto.new_tshow_icon)
+            self._is_god = bool(user_proto.new_god_data.status)
+            anti_proto = data_proto.anti_stat
+            if anti_proto.block_stat and anti_proto.hide_stat and anti_proto.days_tofree > 30:
+                self._is_blocked = True
+            else:
+                self._is_blocked = False
+            self._priv_like = priv_like if (priv_like := user_proto.priv_sets.like) else 1
+            self._priv_reply = priv_reply if (priv_reply := user_proto.priv_sets.reply) else 1
 
         else:
             self._user_id = 0
@@ -162,6 +169,7 @@ class UserInfo_pf(object):
             self._gender = 0
             self._age = 0.0
             self._post_num = 0
+            self._agree_num = 0
             self._fan_num = 0
             self._follow_num = 0
             self._forum_num = 0
@@ -169,7 +177,6 @@ class UserInfo_pf(object):
             self._icons = []
             self._vimage = VirtualImage_pf()._init_null()
             self._ip = ''
-            self._is_bawu = False
             self._is_vip = False
             self._is_god = False
             self._is_blocked = False
@@ -183,18 +190,7 @@ class UserInfo_pf(object):
         return str(
             {
                 'user_id': self._user_id,
-                'user_name': self._user_name,
-                'portrait': self._portrait,
                 'show_name': self.show_name,
-                'tieba_uid': self._tieba_uid,
-                'glevel': self._glevel,
-                'gender': self._gender,
-                'age': self._age,
-                'post_num': self._post_num,
-                'sign': self._sign,
-                'vimage': self._vimage._state,
-                'ip': self._ip,
-                'priv_like': self._priv_like,
             }
         )
 
@@ -307,6 +303,14 @@ class UserInfo_pf(object):
         return self._post_num
 
     @property
+    def agree_num(self) -> int:
+        """
+        获赞数
+        """
+
+        return self._agree_num
+
+    @property
     def fan_num(self) -> int:
         """
         粉丝数
@@ -361,14 +365,6 @@ class UserInfo_pf(object):
         """
 
         return self._vimage
-
-    @property
-    def is_bawu(self) -> bool:
-        """
-        是否吧务
-        """
-
-        return self._is_bawu
 
     @property
     def is_vip(self) -> bool:
@@ -563,9 +559,8 @@ class Contents_pf(Containers[TypeFragment]):
         imgs (list[FragImage_pf]): 图像碎片列表
         ats (list[FragAt_pf]): @碎片列表
         links (list[FragLink_pf]): 链接碎片列表
-
-        has_voice (bool): 是否包含音频
-        has_video (bool): 是否包含视频
+        video (FragVideo_pf): 视频碎片
+        voice (FragVoice_pf): 音频碎片
     """
 
     __slots__ = [
@@ -575,55 +570,68 @@ class Contents_pf(Containers[TypeFragment]):
         '_imgs',
         '_ats',
         '_links',
-        '_has_voice',
-        '_has_video',
+        '_video',
+        '_voice',
     ]
 
-    def _init(self, protos: Iterable[TypeMessage]) -> "Contents_pf":
-        def _init_by_type(proto):
-            _type = proto.type
-            # 0纯文本 9电话号 18话题 27百科词条
-            if _type in [0, 9, 18, 27]:
-                fragment = FragText_pf(proto)
-                self._texts.append(fragment)
-            # 11:tid=5047676428
-            elif _type in [2, 11]:
-                fragment = FragEmoji_pf(proto)
-                self._emojis.append(fragment)
-            elif _type in [3, 20]:
-                fragment = FragmentUnknown_pf()
-            elif _type == 4:
-                fragment = FragAt_pf(proto)
-                self._ats.append(fragment)
-                self._texts.append(fragment)
-            elif _type == 1:
-                fragment = FragLink_pf(proto)
-                self._links.append(fragment)
-                self._texts.append(fragment)
-            elif _type == 5:  # video
-                fragment = FragmentUnknown_pf()
-                self._has_video = True
-            elif _type == 10:
-                fragment = FragmentUnknown_pf()
-                self._has_voice = True
-            else:
-                fragment = FragmentUnknown_pf(proto)
-                from ...logging import get_logger as LOG
+    def _init(self, data_proto: TypeMessage) -> "Contents_pf":
+        content_protos = data_proto.first_post_content
 
-                LOG().warning(f"Unknown fragment type. type={_type} frag={fragment}")
+        def _frags():
+            for proto in content_protos:
+                _type = proto.type
+                # 0纯文本 9电话号 18话题 27百科词条
+                if _type in [0, 9, 18, 27]:
+                    frag = FragText_pf(proto)
+                    self._texts.append(frag)
+                    yield frag
+                # 11:tid=5047676428
+                elif _type in [2, 11]:
+                    frag = FragEmoji_pf(proto)
+                    self._emojis.append(frag)
+                    yield frag
+                elif _type in [3, 20]:
+                    continue
+                elif _type == 4:
+                    frag = FragAt_pf(proto)
+                    self._ats.append(frag)
+                    self._texts.append(frag)
+                    yield frag
+                elif _type == 1:
+                    frag = FragLink_pf(proto)
+                    self._links.append(frag)
+                    self._texts.append(frag)
+                    yield frag
+                elif _type == 5:  # video
+                    continue
+                elif _type == 10:  # voice
+                    continue
+                else:
+                    from ...logging import get_logger as LOG
 
-            return fragment
+                    LOG().warning(f"Unknown fragment type. type={_type} proto={proto}")
 
         self._text = None
         self._texts = []
-        self._links = []
-        self._imgs = []
+        self._imgs = [FragImage_pf(p) for p in data_proto.media if p.type != 5]
         self._emojis = []
         self._ats = []
-        self._has_voice = False
-        self._has_video = False
+        self._links = []
 
-        self._objs = [_init_by_type(p) for p in protos]
+        self._objs = list(_frags())
+        self._objs += self._imgs
+
+        if data_proto.video_info.video_width:
+            self._video = FragVideo_pf()._init(data_proto.video_info)
+            self._objs.append(self._video)
+        else:
+            self._video = FragVideo_pf()._init_null()
+
+        if data_proto.voice_info:
+            self._voice = FragVoice_pf()._init(data_proto.voice_info[0])
+            self._objs.append(self._voice)
+        else:
+            self._voice = FragVoice_pf()._init_null()
 
         return self
 
@@ -635,8 +643,8 @@ class Contents_pf(Containers[TypeFragment]):
         self._imgs = []
         self._ats = []
         self._links = []
-        self._has_voice = False
-        self._has_video = False
+        self._video = FragVideo_pf()._init_null()
+        self._voice = FragVoice_pf()._init_null()
         return self
 
     def __repr__(self) -> str:
@@ -693,20 +701,20 @@ class Contents_pf(Containers[TypeFragment]):
         return self._links
 
     @property
-    def has_voice(self) -> bool:
+    def video(self) -> FragVideo_pf:
         """
-        是否包含音频
+        视频碎片
         """
 
-        return self._has_voice
+        return self._video
 
     @property
-    def has_video(self) -> bool:
+    def voice(self) -> FragVoice_pf:
         """
-        是否包含视频
+        音频碎片
         """
 
-        return self._has_video
+        return self._voice
 
 
 class Thread_pf(object):
@@ -755,10 +763,7 @@ class Thread_pf(object):
 
     def __init__(self, data_proto: TypeMessage) -> None:
         self._text = None
-        self._contents = Contents_pf()._init(data_proto.first_post_content)
-        img_frags = [FragImage_pf(p) for p in data_proto.media]
-        self._contents._objs += img_frags
-        self._contents._imgs = img_frags
+        self._contents = Contents_pf()._init(data_proto)
         self._title = data_proto.title
         self._fid = data_proto.forum_id
         self._fname = data_proto.forum_name
@@ -776,7 +781,6 @@ class Thread_pf(object):
         return str(
             {
                 'tid': self._tid,
-                'pid': self._pid,
                 'user': self._user.log_name,
                 'text': self.text,
             }
