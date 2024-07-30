@@ -40,6 +40,7 @@ def exec_handler_MySQL(create_table_func: Callable, default_ret: Any):
 
     return decorator
 
+
 class FraudTypes(IntEnum):
     # 不涉嫌诈骗
     NOT_FRAUD = 0
@@ -48,16 +49,19 @@ class FraudTypes(IntEnum):
     # 已核实诈骗
     CONFIRMED_FRAUD = 2
 
+
 class UserCredit:
-    def __init__(self, user: UserInfo, violations: int, fraud_type: FraudTypes, last_record: datetime.datetime = None) -> None:
+    def __init__(self, user: UserInfo, violations: int, fraud_type: FraudTypes, blacklisted: bool, last_record: datetime.datetime = None) -> None:
         self.user = user
         self.violations = violations
         self.fraud_type = FraudTypes(fraud_type)
+        self.blacklisted = blacklisted
         if last_record:
             self.last_record = last_record
 
     def __str__(self):
         return f'UserCredit(user={repr(self.user)}, violations={self.violations}, fraud_type={self.fraud_type.name})'
+
 
 class MySQLDB(object):
     """
@@ -260,13 +264,13 @@ class MySQLDB(object):
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     "CREATE TABLE IF NOT EXISTS `user_credit` \
-                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `fraud_type` TINYINT(1) NOT NULL DEFAULT 0, `last_record` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\
+                    (`user_id` BIGINT PRIMARY KEY, `user_name` VARCHAR(64) UNIQUE, `portrait` VARCHAR(36) UNIQUE NOT NULL, `violations` INT NOT NULL, `fraud_type` TINYINT(1) NOT NULL DEFAULT 0, `blacklisted` TINYINT(1) NOT NULL DEFAULT 0, `last_record` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\
                     INDEX `user_name`(user_name))"
                 )
                 LOG().info("成功创建表user_credit")
 
     @exec_handler_MySQL(_create_table_user_credit, None)
-    async def get_user_credit(self, user: UserInfo) -> UserCredit:
+    async def get_user_credit(self, user: UserInfo) -> Optional[UserCredit]:
         """
         获取指定用户的信用记录(违规次数和诈骗记录)
 
@@ -279,7 +283,7 @@ class MySQLDB(object):
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"SELECT `violations`, `fraud_type` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
+                    await cursor.execute(f"SELECT `violations`, `fraud_type`, `blacklisted` FROM `user_credit` WHERE `user_id`=%s", (user.user_id,))
         except aiomysql.Error as err:
             LOG().warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
             return None
@@ -298,7 +302,7 @@ class MySQLDB(object):
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"SELECT `user_id`, `user_name`, `portrait`, `violations`, `fraud_type`, `last_record` FROM `user_credit`")
+                    await cursor.execute(f"SELECT `user_id`, `user_name`, `portrait`, `violations`, `fraud_type`, `blacklisted`, `last_record` FROM `user_credit`")
         except aiomysql.Error as err:
             LOG().warning(f"{err}")
             return []
@@ -311,13 +315,14 @@ class MySQLDB(object):
             return res_list
     
     @exec_handler_MySQL(_create_table_user_credit, False)
-    async def add_user_credit(self, user: UserInfo, fraud_type: FraudTypes, ts: int = 0) -> bool:
+    async def add_user_credit(self, user: UserInfo, fraud_type: FraudTypes, blacklisted: bool, ts: int = 0) -> bool:
         """
         添加用户信用记录
 
         Arg:
             user (UserInfo): 用户user_name
             fraud_type (FraudTypes): 涉嫌诈骗情况
+            blacklisted: 是否加黑名单
             ts (int): 时间戳 为0则使用当前时间
         Returns:
             bool: True成功 False失败
@@ -326,18 +331,40 @@ class MySQLDB(object):
             last_record = f'"{datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")}"'
         else:
             last_record = 'CURRENT_TIMESTAMP()'
-        try:
-            async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:
+            try:
+                await conn.begin()
                 async with conn.cursor() as cursor:
-                    await cursor.execute(f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`fraud_type`) VALUES(%s,%s,%s,1,%s) \
-                        ON DUPLICATE KEY UPDATE `violations`=`violations`+1, `fraud_type`=GREATEST(`fraud_type`, %s), `last_record`={last_record}",
-                        (user.user_id, user.user_name or None, user.portrait, int(fraud_type), int(fraud_type))
-                    )
-        except aiomysql.Error as err:
-            LOG().warning(f"{err}. user_id={user.user_id} user_name={user.user_name}")
-            return False
-        else:
-            return True
+                    await cursor.execute("SELECT `violations`, `fraud_type`, `blacklisted` FROM `user_credit` WHERE `user_id`=%s FOR UPDATE", (user.user_id,))
+                    if res_tuple := await cursor.fetchone():
+                        credit = UserCredit(user, *res_tuple)
+                        update_fields = {
+                            'violations': credit.violations + 1,
+                            'last_record': last_record
+                        }
+                        if int(fraud_type) > int(credit.fraud_type):
+                            update_fields['fraud_type'] = int(fraud_type)
+                        if blacklisted and not credit.blacklisted:
+                            update_fields['blacklisted'] = 1
+                        uf = ','.join(f"`{k}`=%s" for k in update_fields.keys())
+                        params = list(update_fields.values())
+                        params.append(user.user_id)
+                        sql = f"UPDATE `user_credit` SET {uf} WHERE `user_id`=%s"
+                        LOG().info(sql)
+                        await cursor.execute(sql, params)
+                    else:
+                        await cursor.execute(
+                            f"INSERT INTO `user_credit` (`user_id`,`user_name`,`portrait`,`violations`,`fraud_type`,`blacklisted`) VALUES(%s,%s,%s,1,%s,%s)",
+                            (user.user_id, user.user_name or None, user.portrait, int(fraud_type), int(blacklisted))
+                        )
+            except Exception as err:
+                LOG().error(f"{err}. user_id={user.user_id} user_name={user.user_name}", exc_info=True)
+                await conn.rollback()
+                return False
+            else:
+                await conn.commit()
+                return True
+
 
     @exec_handler_MySQL(_create_table_user, UserInfo())
     async def get_userinfo(self, _id: Union[str, int]) -> UserInfo:

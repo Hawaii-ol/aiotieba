@@ -5,6 +5,7 @@ import argparse
 import aiotieba as tb
 from cyuyan_reviewer import FraudTypes, MyReviewer
 
+
 async def main(fname, credential, cred_type=None):
     if not cred_type:
         try:
@@ -45,14 +46,18 @@ async def main(fname, credential, cred_type=None):
                 print('[1] 违法违规内容或垃圾广告')
                 print('[2] 疑似诈骗')
                 print('[3] 举报核实诈骗')
+                print('[4] 加黑名单')
                 try:
                     reason = int(input())
-                    if reason not in [1, 2, 3]:
+                    if reason not in [1, 2, 3, 4]:
                         raise ValueError
                     uc = await reviewer.db.get_user_credit(user)
                     violations = uc.violations + 1 if uc else 1
-                    fraud_type = FraudTypes(reason - 1)
-                    punish = reviewer.make_punish(tb.Ops.NORMAL, violations, fraud_type)
+                    if reason == 4:
+                        punish = reviewer.make_punish(tb.Ops.NORMAL, violations, FraudTypes.NOT_FRAUD, True)
+                    else:
+                        fraud_type = FraudTypes(reason - 1)
+                        punish = reviewer.make_punish(tb.Ops.NORMAL, violations, fraud_type)
                     note = punish.note
                     print(note)
                     await reviewer.db.add_user_credit(user, fraud_type)
@@ -63,6 +68,7 @@ async def main(fname, credential, cred_type=None):
         else:
             print('未找到用户信息，请检查用户凭据是否正确。')
 
+
 def print_uinfo(user):
     print(f'user_id: {user.user_id}')
     print(f'portrait: {user.portrait}')
@@ -70,6 +76,7 @@ def print_uinfo(user):
     print(f'用户名: {user.user_name}')
     print(f'昵称: {user.nick_name}')
     print(f'吧龄(年): {user.age}')
+
 
 if __name__ == '__main__':
     tb.logging.enable_filelog()

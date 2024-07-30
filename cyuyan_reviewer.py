@@ -54,20 +54,23 @@ class MyReviewer(tb.Reviewer):
         """
         return lambda : 120.0
     
-    def punish_note(self, violations: int, fraud_type: FraudTypes):
+    def punish_note(self, violations: int, fraud_type: FraudTypes, blacklisted: bool):
         """
         根据违规记录，返回对应的封禁理由
         Args:
             violations (int): 违规次数
-            fruad_type (FraudTypes): 涉嫌诈骗情况
+            fraud_type (FraudTypes): 涉嫌诈骗情况
                 FraudTypes.NOT_FRAUD: 不涉嫌诈骗
                 FraudTypes.SUSPECTED_FRAUD: 疑似诈骗
                 FraudTypes.CONFIRMED_FRAUD: 已核实诈骗
+            blacklisted: 是否为黑名单用户
         """
-        if fraud_type == FraudTypes.SUSPECTED_FRAUD:
-            return '风控检测疑似诈骗账号，为避免风险删封处理。'
-        elif fraud_type == FraudTypes.CONFIRMED_FRAUD:
+        if fraud_type == FraudTypes.CONFIRMED_FRAUD:
             return '经举报核实，此账号或相关账号存在诈骗行为，予以发言永久删封处罚。'
+        elif blacklisted:
+            return '此账号因严重违规已加入黑名单，予以发言永久删封处罚。'
+        elif fraud_type == FraudTypes.SUSPECTED_FRAUD:
+            return '风控检测疑似诈骗账号，为避免风险删封处理。'
         if violations <= 3:
             return '发布违法违规内容或垃圾广告。'
         elif violations < self.blacklist_violations:
@@ -75,23 +78,24 @@ class MyReviewer(tb.Reviewer):
         else:
             return '多次发布违法违规内容或垃圾广告，屡教不改，藐视吧规，予以发言永久删封处罚。'
 
-    def make_punish(self, op: tb.Ops, violations: int, fraud_type: FraudTypes) -> tb.Punish:
+    def make_punish(self, op: tb.Ops, violations: int, fraud_type: FraudTypes, blacklisted: bool = False) -> tb.Punish:
         """
         生成处罚 (punish对象)
         Args:
             op (tb.Ops): 处罚类型(删贴、隐藏)
             violations (int): 违规次数
-            fruad_type (FraudTypes): 涉嫌诈骗情况
+            fraud_type (FraudTypes): 涉嫌诈骗情况
+            blacklisted: 是否为黑名单用户
         """
-        note = self.punish_note(violations, fraud_type)
+        note = self.punish_note(violations, fraud_type, blacklisted)
         max_days = 10 if self.is_bazhu else 1
-        if fraud_type == FraudTypes.CONFIRMED_FRAUD:
+        if fraud_type == FraudTypes.CONFIRMED_FRAUD or blacklisted:
             days = min(10, max_days)
-        elif violations == 1: # 初次豁免
+        elif violations == 1:  # 初次豁免
             days = 0
         elif violations < 3:
             days = 1
-        elif violations < self.blacklist_violations - 1: # 拉黑前最后一次封禁为10天
+        elif violations < self.blacklist_violations - 1:  # 拉黑前最后一次封禁为10天
             days = min(3, max_days)
         else:
             days = min(10, max_days)
@@ -212,7 +216,7 @@ class MyReviewer(tb.Reviewer):
     
     async def check_blacklist(self, obj: Union[Thread, Post, Comment]) -> Optional[tb.Punish]:
         """
-        以下用户发言一律删封：
+        以下用户发言一律加黑名单，删封10天：
         1.违规次数达到或超过blacklist_violations
         2.经举报核实诈骗
         """
@@ -220,18 +224,20 @@ class MyReviewer(tb.Reviewer):
         if obj.tid in self.exclude_tids:
             return
         if uc := await self.db.get_user_credit(obj.user):
+            if uc.blacklisted:
+                return self.make_punish(tb.Ops.DELETE, uc.violations, uc.fraud_type, blacklisted=True)
             if uc.violations >= self.blacklist_violations or uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:
-                await self.update_user_credit(obj.user, uc.fraud_type)
-                return self.make_punish(tb.Ops.DELETE, uc.violations, uc.fraud_type)
+                await self.update_user_credit(obj.user, uc.fraud_type, blacklisted=True)
+                return self.make_punish(tb.Ops.DELETE, uc.violations, uc.fraud_type, blacklisted=True)
     
-    async def update_user_credit(self, user: UserInfo, fraud_type: FraudTypes, ts: int = 0):
+    async def update_user_credit(self, user: UserInfo, fraud_type: FraudTypes, blacklisted: bool = False, ts: int = 0):
         """
         更新用户信用记录到user_credit数据库
         若当前用户不在数据库中，新增一条记录，否则将对应记录的violations + 1
         debug模式下此方法会被替换为空
         """
-        LOG().info(f'Update user credit: user={user} fraud_type={fraud_type}')
-        return await self.db.add_user_credit(user, fraud_type, ts)
+        LOG().info(f'Update user credit: user={user} fraud_type={fraud_type} blacklisted={blacklisted}')
+        return await self.db.add_user_credit(user, fraud_type, blacklisted, ts)
     
     def debug_prepare(self):
         super(MyReviewer, self).debug_prepare()
