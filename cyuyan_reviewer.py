@@ -135,7 +135,7 @@ class MyReviewer(tb.Reviewer):
                 break
         if punish:
             uc = await self.db.get_user_credit(post.user)
-            violations = uc.violations + 1 if uc else 1
+            violations = uc.violations + 1 if uc else 2
             await self.update_user_credit(post.user, FraudTypes.NOT_FRAUD)
             return self.make_punish(tb.Ops.DELETE, violations, FraudTypes.NOT_FRAUD)
 
