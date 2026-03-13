@@ -23,7 +23,8 @@ async def add_spam_img(filename: str, fname='', note=None):
 
 async def add_spam_img_url(url: str, fname='', note=None):
     async with BaseReviewer('', fname) as reviewer:
-        img = await reviewer.client.get_image(url)
+        maybe_img = await reviewer.client.get_image(url)
+        img = maybe_img.img
         if img is None:
             print('获取图片失败')
             exit(1)
