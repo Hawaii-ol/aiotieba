@@ -1,5 +1,3 @@
-from typing import List, Tuple, Union
-
 def cuid_galaxy2(android_id: str) -> str:
     """
     使用给定的android_id生成cuid_galaxy2
@@ -16,7 +14,6 @@ def cuid_galaxy2(android_id: str) -> str:
     Note:
         此实现与12.x版本及以前的官方实现一致
     """
-    ...
 
 def c3_aid(android_id: str, uuid: str) -> str:
     """
@@ -35,7 +32,6 @@ def c3_aid(android_id: str, uuid: str) -> str:
     Note:
         此实现与12.x版本及以前的官方实现一致
     """
-    ...
 
 def rc4_42(xyus_md5_str: str, aes_cbc_sec_key: bytes) -> bytes:
     """
@@ -48,9 +44,8 @@ def rc4_42(xyus_md5_str: str, aes_cbc_sec_key: bytes) -> bytes:
     Returns:
         bytes
     """
-    ...
 
-def sign(data: List[Tuple[str, Union[str, int]]]) -> str:
+def sign(data: list[tuple[str, str | int]]) -> str:
     """
     为参数元组列表计算贴吧客户端签名
 
@@ -60,4 +55,14 @@ def sign(data: List[Tuple[str, Union[str, int]]]) -> str:
     Returns:
         str: 签名
     """
-    ...
+
+def enuid(cuid_galaxy2: str) -> str:
+    """
+    生成EnUid
+
+    Args:
+        cuid_galaxy2 (str)
+
+    Returns:
+        str: 变种base64编码后的enuid
+    """

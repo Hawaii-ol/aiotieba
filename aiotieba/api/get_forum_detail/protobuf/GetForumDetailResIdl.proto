@@ -13,11 +13,12 @@ message GetForumDetailResIdl {
             uint32 member_count = 5;
             uint32 thread_count = 6;
             string slogan = 7;
+            string lv1_name = 18;
             string avatar_origin = 20;
         }
         RecommendForumInfo forum_info = 1;
         message ManagerElectionTab {
-            uint32 new_manager_status = 4;
+            string new_strategy_text = 5;
         }
         ManagerElectionTab election_tab = 8;
     }

@@ -1,9 +1,17 @@
-from typing import Mapping, Optional
+from __future__ import annotations
 
+import dataclasses as dcs
+from typing import TYPE_CHECKING
+
+from ...exception import TbErrorExt
 from .._classdef import Containers
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
-class SelfFollowForum(object):
+
+@dcs.dataclass
+class SelfFollowForum:
     """
     吧基本信息
 
@@ -11,154 +19,39 @@ class SelfFollowForum(object):
         fid (int): 贴吧id
         fname (str): 贴吧名
         level (int): 用户等级
+        is_signed (bool): 是否已签到
     """
 
-    __slots__ = [
-        '_fid',
-        '_fname',
-        '_level',
-    ]
+    fid: int = 0
+    fname: str = ""
+    level: int = 0
+    is_signed: bool = False
 
-    def __init__(self, data_map: Mapping) -> None:
-        self._fid = data_map['forum_id']
-        self._fname = data_map['forum_name']
-        self._level = data_map['level_id']
-
-    def __repr__(self) -> str:
-        return str(
-            {
-                'fid': self._fid,
-                'fname': self._fname,
-                'level': self._level,
-            }
-        )
-
-    @property
-    def fid(self) -> int:
-        """
-        贴吧id
-        """
-
-        return self._fid
-
-    @property
-    def fname(self) -> str:
-        """
-        贴吧名
-        """
-
-        return self._fname
+    @staticmethod
+    def from_tbdata(data_map: Mapping) -> SelfFollowForum:
+        fid = data_map["forum_id"]
+        fname = data_map["forum_name"]
+        level = data_map["level_id"]
+        is_signed = data_map["is_sign"]
+        return SelfFollowForum(fid, fname, level, is_signed)
 
 
-class Page_sforum(object):
-    """
-    页信息
-
-    Attributes:
-        current_page (int): 当前页码
-        total_page (int): 总页码
-
-        has_more (bool): 是否有后继页
-        has_prev (bool): 是否有前驱页
-    """
-
-    __slots__ = [
-        '_current_page',
-        '_total_page',
-        '_has_more',
-        '_has_prev',
-    ]
-
-    def _init(self, data_map: Mapping) -> "Page_sforum":
-        self._current_page = data_map['cur_page']
-        self._total_page = data_map['total_page']
-        self._has_more = self._current_page < self._total_page
-        self._has_prev = self._current_page > 1
-        return self
-
-    def _init_null(self) -> "Page_sforum":
-        self._current_page = 0
-        self._total_page = 0
-        self._has_more = False
-        self._has_prev = False
-        return self
-
-    def __repr__(self) -> str:
-        return str(
-            {
-                'current_page': self._current_page,
-                'total_page': self._total_page,
-                'has_more': self._has_more,
-                'has_prev': self._has_prev,
-            }
-        )
-
-    @property
-    def current_page(self) -> int:
-        """
-        当前页码
-        """
-
-        return self._current_page
-
-    @property
-    def total_page(self) -> int:
-        """
-        总页码
-        """
-
-        return self._total_page
-
-    @property
-    def has_more(self) -> bool:
-        """
-        是否有后继页
-        """
-
-        return self._has_more
-
-    @property
-    def has_prev(self) -> bool:
-        """
-        是否有前驱页
-        """
-
-        return self._has_prev
-
-
-class SelfFollowForums(Containers[SelfFollowForum]):
+@dcs.dataclass
+class SelfFollowForums(TbErrorExt, Containers[SelfFollowForum]):
     """
     本账号关注贴吧列表
 
     Attributes:
-        _objs (list[SelfFollowForum]): 本账号关注贴吧列表
+        objs (list[SelfFollowForum]): 本账号关注贴吧列表
+        err (Exception | None): 捕获的异常
 
-        page (Page_sforum): 页信息
         has_more (bool): 是否还有下一页
     """
 
-    __slots__ = ['_page']
+    has_more: bool = False
 
-    def __init__(self, data_map: Optional[Mapping] = None) -> None:
-        if data_map:
-            self._objs = [SelfFollowForum(m) for m in data_map['list']]
-            self._page = Page_sforum()._init(data_map['page'])
-        else:
-            self._objs = []
-            self._page = Page_sforum()._init_null()
-
-    @property
-    def page(self) -> Page_sforum:
-        """
-        页信息
-        """
-
-        return self._page
-
-    @property
-    def has_more(self) -> bool:
-        """
-        是否还有下一页
-        """
-
-        return self._page._has_more
+    @staticmethod
+    def from_tbdata(data_map: Mapping) -> SelfFollowForums:
+        objs = [SelfFollowForum.from_tbdata(m) for m in data_map["like_forum"]]
+        has_more = data_map["like_forum_has_more"]
+        return SelfFollowForums(objs, has_more)

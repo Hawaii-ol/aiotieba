@@ -3,14 +3,14 @@ import pytest
 import aiotieba as tb
 
 
-@pytest.mark.flaky(reruns=3, reruns_delay=2.0)
-@pytest.mark.asyncio
+@pytest.mark.flaky(reruns=2, reruns_delay=5.0)
+@pytest.mark.asyncio(loop_scope="session")
 async def test_Forum_detail(client: tb.Client):
     forum = await client.get_forum_detail(21841105)
 
     ##### Forum_detail #####
     assert forum.fid > 0
-    assert forum.fname != ''
+    assert forum.fname != ""
     assert forum.small_avatar != ""
     assert forum.origin_avatar != ""
     assert forum.slogan != ""

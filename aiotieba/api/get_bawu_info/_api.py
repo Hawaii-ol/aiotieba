@@ -1,6 +1,6 @@
 import yarl
 
-from ...const import APP_BASE_HOST, APP_INSECURE_SCHEME, MAIN_VERSION
+from ...const import APP_BASE_HOST, MAIN_VERSION
 from ...core import HttpCore, WsCore
 from ...exception import TiebaServerError
 from ._classdef import BawuInfo
@@ -25,7 +25,7 @@ def parse_body(body: bytes) -> BawuInfo:
         raise TiebaServerError(code, res_proto.error.errmsg)
 
     data_proto = res_proto.data
-    bawu_info = BawuInfo(data_proto)
+    bawu_info = BawuInfo.from_tbdata(data_proto)
 
     return bawu_info
 
@@ -34,22 +34,16 @@ async def request_http(http_core: HttpCore, fid: int) -> BawuInfo:
     data = pack_proto(fid)
 
     request = http_core.pack_proto_request(
-        yarl.URL.build(
-            scheme=APP_INSECURE_SCHEME, host=APP_BASE_HOST, path="/c/f/forum/getBawuInfo", query_string=f"cmd={CMD}"
-        ),
+        yarl.URL.build(scheme="http", host=APP_BASE_HOST, path="/c/f/forum/getBawuInfo", query_string=f"cmd={CMD}"),
         data,
     )
-
-    __log__ = "fid={fid}"  # noqa: F841
 
     body = await http_core.net_core.send_request(request, read_bufsize=8 * 1024)
     return parse_body(body)
 
 
 async def request_ws(ws_core: WsCore, fid: int) -> BawuInfo:
-    data = pack_proto(ws_core.account, fid)
-
-    __log__ = "fid={fid}"  # noqa: F841
+    data = pack_proto(fid)
 
     response = await ws_core.send(data, CMD)
     return parse_body(await response.read())

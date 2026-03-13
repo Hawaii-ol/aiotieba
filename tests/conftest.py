@@ -1,19 +1,11 @@
-import asyncio
+import os
 
-import pytest
 import pytest_asyncio
 
 import aiotieba as tb
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="package")
+@pytest_asyncio.fixture(loop_scope="session")
 async def client():
-    async with tb.Client('starry_xh', try_ws=True) as client:
+    async with tb.Client(os.getenv("TB_BDUSS"), os.getenv("TB_STOKEN", ""), try_ws=True, proxy=True) as client:
         yield client

@@ -1,21 +1,27 @@
+from __future__ import annotations
+
 import asyncio
 import binascii
+import dataclasses as dcs
 import gzip
-import secrets
+import random
 import time
 import weakref
-from typing import Awaitable, Callable, Dict, Tuple
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 import aiohttp
 import yarl
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import algorithms
 
 from ..enums import WsStatus
 from ..exception import HTTPStatusError
 from ..helper import timeout
-from .account import Account
-from .net import NetCore
+
+if TYPE_CHECKING:
+    from .account import Account
+    from .net import NetCore
 
 TypeWebsocketCallback = Callable[["WsCore", bytes, int], Awaitable[None]]
 
@@ -27,7 +33,7 @@ def pack_ws_bytes(
     打包数据并添加9字节头部
 
     Args:
-        account (Account): 贴吧的用户信息容器
+        account (Account): 贴吧的用户参数容器
         data (bytes): 待发送的websocket数据
         cmd (int): 请求的cmd类型
         req_id (int): 请求的id
@@ -45,27 +51,27 @@ def pack_ws_bytes(
         data = gzip.compress(data, compresslevel=6, mtime=0)
     if encrypt:
         flag |= 0b10000000
-        data = pad(data, AES.block_size)
-        data = account.aes_ecb_chiper.encrypt(data)
+        padder = padding.PKCS7(algorithms.AES.block_size).padder()
+        data = padder.update(data) + padder.finalize()
+        encryptor = account.aes_ecb_chiper.encryptor()
+        data = encryptor.update(data) + encryptor.finalize()
 
-    data = b''.join(
-        [
-            flag.to_bytes(1, 'big'),
-            cmd.to_bytes(4, 'big'),
-            req_id.to_bytes(4, 'big'),
-            data,
-        ]
-    )
+    data = b"".join([
+        flag.to_bytes(1, "big"),
+        cmd.to_bytes(4, "big"),
+        req_id.to_bytes(4, "big"),
+        data,
+    ])
 
     return data
 
 
-def parse_ws_bytes(account: Account, data: bytes) -> Tuple[bytes, int, int]:
+def parse_ws_bytes(account: Account, data: bytes) -> tuple[bytes, int, int]:
     """
     对websocket返回数据进行解包
 
     Args:
-        account (Account): 贴吧的用户信息容器
+        account (Account): 贴吧的用户参数容器
         data (bytes): 接收到的websocket数据
 
     Returns:
@@ -76,32 +82,29 @@ def parse_ws_bytes(account: Account, data: bytes) -> Tuple[bytes, int, int]:
 
     data_view = memoryview(data)
     flag = data_view[0]
-    cmd = int.from_bytes(data_view[1:5], 'big')
-    req_id = int.from_bytes(data_view[5:9], 'big')
+    cmd = int.from_bytes(data_view[1:5], "big")
+    req_id = int.from_bytes(data_view[5:9], "big")
 
     data = data_view[9:].tobytes()
     if flag & 0b10000000:
-        data = account.aes_ecb_chiper.decrypt(data)
-        data = unpad(data, AES.block_size)
+        decryptor = account.aes_ecb_chiper.decryptor()
+        data = decryptor.update(data) + decryptor.finalize()
+        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+        data = unpadder.update(data) + unpadder.finalize()
     if flag & 0b01000000:
         data = gzip.decompress(data)
 
     return data, cmd, req_id
 
 
-class MsgIDPair(object):
+@dcs.dataclass
+class MsgIDPair:
     """
     长度为2的msg_id队列 记录新旧msg_id
     """
 
-    __slots__ = [
-        'last_id',
-        'curr_id',
-    ]
-
-    def __init__(self, last_id: int, curr_id: int) -> None:
-        self.last_id = last_id
-        self.curr_id = curr_id
+    last_id: int = 0
+    curr_id: int = 0
 
     def update_msg_id(self, curr_id: int) -> None:
         """
@@ -115,19 +118,14 @@ class MsgIDPair(object):
         self.curr_id = curr_id
 
 
-class MsgIDManager(object):
+@dcs.dataclass
+class MsgIDManager:
     """
     msg_id管理器
     """
 
-    __slots__ = [
-        'priv_gid',
-        'gid2mid',
-    ]
-
-    def __init__(self) -> None:
-        self.priv_gid: int = None
-        self.gid2mid: Dict[int, MsgIDPair] = None
+    priv_gid: int = 0
+    gid2mid: dict[int, MsgIDPair] = dcs.field(default_factory=lambda: {0: MsgIDPair()})
 
     def update_msg_id(self, group_id: int, msg_id: int) -> None:
         """
@@ -168,30 +166,27 @@ class MsgIDManager(object):
         return self.get_msg_id(self.priv_gid) * 100 + 1
 
 
-class WsResponse(object):
+@dcs.dataclass
+class WsResponse:
     """
     websocket响应
 
     Args:
-        data_future (asyncio.Future): 用于等待读事件到来的Future
+        future (asyncio.Future): 用于等待读事件到来的Future
         req_id (int): 请求id
         read_timeout (float): 读超时时间
-        loop (asyncio.AbstractEventLoop): 事件循环
     """
 
-    __slots__ = [
-        '__weakref__',
-        'future',
-        'req_id',
-        'read_timeout',
-        'loop',
-    ]
+    loop: asyncio.AbstractEventLoop
+    future: asyncio.Future
+    req_id: int
+    read_timeout: float
 
-    def __init__(self, req_id: int, read_timeout: float, loop: asyncio.AbstractEventLoop) -> None:
-        self.future = loop.create_future()
+    def __init__(self, req_id: int, read_timeout: float) -> None:
+        self.loop = asyncio.get_running_loop()
+        self.future = self.loop.create_future()
         self.req_id = req_id
         self.read_timeout = read_timeout
-        self.loop = loop
 
     async def read(self) -> bytes:
         """
@@ -215,24 +210,22 @@ class WsResponse(object):
             raise
 
 
-class WsWaiter(object):
+@dcs.dataclass
+class WsWaiter:
     """
     websocket等待映射
     """
 
-    __slots__ = [
-        '__weakref__',
-        'waiter',
-        'req_id',
-        'read_timeout',
-        'loop',
-    ]
+    loop: asyncio.AbstractEventLoop
+    waiter: weakref.WeakValueDictionary
+    req_id: int
+    read_timeout: float
 
-    def __init__(self, loop: asyncio.AbstractEventLoop, read_timeout: float) -> None:
-        self.loop = loop
-        self.read_timeout = read_timeout
+    def __init__(self, read_timeout: float) -> None:
+        self.loop = asyncio.get_running_loop()
         self.waiter = weakref.WeakValueDictionary()
         self.req_id = int(time.time())
+        self.read_timeout = read_timeout
         weakref.finalize(self, self.__cancel_all)
 
     def __cancel_all(self) -> None:
@@ -251,7 +244,7 @@ class WsWaiter(object):
         """
 
         self.req_id += 1
-        ws_resp = WsResponse(self.req_id, self.read_timeout, self.loop)
+        ws_resp = WsResponse(self.req_id, self.read_timeout)
         self.waiter[self.req_id] = ws_resp
         return ws_resp
 
@@ -270,34 +263,36 @@ class WsWaiter(object):
         ws_resp.future.set_result(data)
 
 
-class WsCore(object):
+@dcs.dataclass
+class WsCore:
     """
     保存websocket接口相关状态的核心容器
     """
 
-    __slots__ = [
-        'account',
-        'net_core',
-        'waiter',
-        'callbacks',
-        'websocket',
-        'ws_dispatcher',
-        'mid_manager',
-        '_status',
-        '_req_id',
-        'loop',
-    ]
+    account: Account
+    net_core: NetCore
+    waiter: WsWaiter
+    callbacks: dict[int, TypeWebsocketCallback]
+    websocket: aiohttp.ClientWebSocketResponse
+    ws_dispatcher: asyncio.Task
+    mid_manager: MsgIDManager
+    _status: WsStatus
+    loop: asyncio.AbstractEventLoop
 
-    def __init__(self, account: Account, net_core: NetCore, loop: asyncio.AbstractEventLoop) -> None:
-        self.account = account
+    def __init__(self, account: Account, net_core: NetCore) -> None:
+        self.set_account(account)
         self.net_core = net_core
-        self.loop = loop
 
-        self.callbacks: Dict[int, TypeWebsocketCallback] = {}
+        self.callbacks: dict[int, TypeWebsocketCallback] = {}
         self.websocket: aiohttp.ClientWebSocketResponse = None
         self.ws_dispatcher: asyncio.Task = None
 
         self._status = WsStatus.CLOSED
+
+        self.loop = asyncio.get_running_loop()
+
+    def set_account(self, new_account: Account) -> None:
+        self.account = new_account
 
     async def connect(self) -> None:
         """
@@ -309,19 +304,19 @@ class WsCore(object):
 
         self._status = WsStatus.CONNECTING
 
-        self.waiter = WsWaiter(self.loop, self.net_core.time_cfg.ws_read)
+        self.waiter = WsWaiter(self.net_core.timeout.ws_read)
         self.mid_manager = MsgIDManager()
 
         from aiohttp import hdrs
 
         ws_url = yarl.URL.build(scheme="ws", host="im.tieba.baidu.com", port=8000)
-        sec_key_bytes = binascii.b2a_base64(secrets.token_bytes(16), newline=False)
+        sec_key_bytes = binascii.b2a_base64(random.randbytes(16), newline=False)
         headers = {
             hdrs.UPGRADE: "websocket",
             hdrs.CONNECTION: "upgrade",
             hdrs.SEC_WEBSOCKET_EXTENSIONS: "im_version=2.3",
             hdrs.SEC_WEBSOCKET_VERSION: "13",
-            hdrs.SEC_WEBSOCKET_KEY: sec_key_bytes.decode('ascii'),
+            hdrs.SEC_WEBSOCKET_KEY: sec_key_bytes.decode("ascii"),
             hdrs.ACCEPT_ENCODING: "gzip",
             hdrs.HOST: "im.tieba.baidu.com:8000",
         }
@@ -329,9 +324,8 @@ class WsCore(object):
             hdrs.METH_GET,
             ws_url,
             headers=headers,
-            loop=self.loop,
-            proxy=self.net_core.proxy,
-            proxy_auth=self.net_core.proxy_auth,
+            proxy=self.net_core.proxy.url,
+            proxy_auth=self.net_core.proxy.auth,
             ssl=False,
         )
 
@@ -344,9 +338,9 @@ class WsCore(object):
             conn = response.connection
             conn_proto = conn.protocol
             transport = conn.transport
-            reader = aiohttp.FlowControlDataQueue(conn_proto, 1 << 16, loop=self.loop)
-            conn_proto.set_parser(aiohttp.http.WebSocketReader(reader, 4 * 1024 * 1024), reader)
-            writer = aiohttp.http.WebSocketWriter(conn_proto, transport, use_mask=True)
+            reader = aiohttp.client.WebSocketDataQueue(conn_proto, 1 << 16, loop=self.loop)
+            conn_proto.set_parser(aiohttp.client.WebSocketReader(reader, 4 * 1024 * 1024), reader)
+            writer = aiohttp.client.WebSocketWriter(conn_proto, transport, use_mask=True)
         except BaseException:
             response.close()
             raise
@@ -354,14 +348,13 @@ class WsCore(object):
             self.websocket = aiohttp.ClientWebSocketResponse(
                 reader,
                 writer,
-                'chat',
+                "chat",
                 response,
-                self.net_core.time_cfg.ws_keepalive,
+                self.net_core.timeout.ws_timeout,
                 True,
                 True,
                 self.loop,
-                receive_timeout=self.net_core.time_cfg.ws_read,
-                heartbeat=self.net_core.time_cfg.ws_heartbeat,
+                heartbeat=self.net_core.timeout.ws_heartbeat,
             )
 
         if self.ws_dispatcher is not None and not self.ws_dispatcher.done():
@@ -423,7 +416,7 @@ class WsCore(object):
         req_data = pack_ws_bytes(self.account, data, cmd, response.req_id, compress=compress, encrypt=encrypt)
 
         try:
-            async with timeout(self.net_core.time_cfg.ws_send, self.loop):
+            async with timeout(self.net_core.timeout.ws_send, self.loop):
                 await self.websocket.send_bytes(req_data)
         except asyncio.TimeoutError as err:
             response.future.cancel()

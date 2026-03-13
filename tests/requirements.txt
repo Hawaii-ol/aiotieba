@@ -1,6 +1,0 @@
-.[speedup]
-
-# Test Suite
-pytest
-pytest-asyncio
-pytest-rerunfailures

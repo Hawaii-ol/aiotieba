@@ -1,6 +1,6 @@
 import yarl
 
-from ...const import APP_BASE_HOST, APP_SECURE_SCHEME, MAIN_VERSION
+from ...const import APP_BASE_HOST, MAIN_VERSION
 from ...core import Account, HttpCore, WsCore
 from ...exception import TiebaServerError
 from ._classdef import BlacklistOldUsers
@@ -11,7 +11,7 @@ CMD = 303028
 
 def pack_proto(account: Account, pn: int, rn: int) -> bytes:
     req_proto = UserMuteQueryReqIdl_pb2.UserMuteQueryReqIdl()
-    req_proto.data.common.BDUSS = account._BDUSS
+    req_proto.data.common.BDUSS = account.BDUSS
     req_proto.data.common._client_version = MAIN_VERSION
     req_proto.data.pn = pn
     req_proto.data.rn = rn
@@ -27,7 +27,7 @@ def parse_body(proto: bytes) -> BlacklistOldUsers:
         raise TiebaServerError(code, res_proto.error.errmsg)
 
     data_proto = res_proto.data
-    blacklist_users = BlacklistOldUsers(data_proto)
+    blacklist_users = BlacklistOldUsers.from_tbdata(data_proto)
 
     return blacklist_users
 
@@ -36,9 +36,7 @@ async def request_http(http_core: HttpCore, pn: int, rn: int) -> BlacklistOldUse
     data = pack_proto(http_core.account, pn, rn)
 
     request = http_core.pack_proto_request(
-        yarl.URL.build(
-            scheme=APP_SECURE_SCHEME, host=APP_BASE_HOST, path="/c/u/user/userMuteQuery", query_string=f"cmd={CMD}"
-        ),
+        yarl.URL.build(scheme="http", host=APP_BASE_HOST, path="/c/u/user/userMuteQuery", query_string=f"cmd={CMD}"),
         data,
     )
 

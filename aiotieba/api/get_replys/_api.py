@@ -1,6 +1,6 @@
 import yarl
 
-from ...const import APP_BASE_HOST, APP_SECURE_SCHEME, MAIN_VERSION
+from ...const import APP_BASE_HOST, MAIN_VERSION
 from ...core import Account, HttpCore, WsCore
 from ...exception import TiebaServerError
 from ._classdef import Replys
@@ -11,7 +11,7 @@ CMD = 303007
 
 def pack_proto(account: Account, pn: int) -> bytes:
     req_proto = ReplyMeReqIdl_pb2.ReplyMeReqIdl()
-    req_proto.data.common.BDUSS = account._BDUSS
+    req_proto.data.common.BDUSS = account.BDUSS
     req_proto.data.common._client_version = MAIN_VERSION
     req_proto.data.pn = str(pn)
 
@@ -26,7 +26,7 @@ def parse_body(proto: bytes) -> Replys:
         raise TiebaServerError(code, res_proto.error.errmsg)
 
     data_proto = res_proto.data
-    replys = Replys(data_proto)
+    replys = Replys.from_tbdata(data_proto)
 
     return replys
 
@@ -35,9 +35,7 @@ async def request_http(http_core: HttpCore, pn: int) -> Replys:
     data = pack_proto(http_core.account, pn)
 
     request = http_core.pack_proto_request(
-        yarl.URL.build(
-            scheme=APP_SECURE_SCHEME, host=APP_BASE_HOST, path="/c/u/feed/replyme", query_string=f"cmd={CMD}"
-        ),
+        yarl.URL.build(scheme="http", host=APP_BASE_HOST, path="/c/u/feed/replyme", query_string=f"cmd={CMD}"),
         data,
     )
 

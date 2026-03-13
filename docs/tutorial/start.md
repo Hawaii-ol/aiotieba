@@ -58,7 +58,7 @@ user_id唯一，不可变，不能为空
 
 请注意将其与用户个人主页的tieba_uid相区分
 
-user_id是一个int64值
+user_id是一个uint64值（仅有一些远古时期的ip账号不符合这个规则）
 
 user_name portrait user_id 都是满足唯一性的用户标识符，并可以通过其中任意一个的值反查其余两个
 
@@ -70,7 +70,7 @@ tieba_uid唯一，不可变，但可以为空
 
 请注意将其与用户的user_id相区分
 
-tieba_uid是一个uint64值（仅有一些远古时期的ip账号不符合这个规则）
+tieba_uid是一个uint64值
 
 可以通过tieba_uid的值反查user_name portrait user_id
 
@@ -96,22 +96,9 @@ tieba_uid是一个uint64值（仅有一些远古时期的ip账号不符合这个
 
 如果你不了解Python异步编程，请先阅读[异步编程入门教程](async_start.md)
 
-## 添加账号
+## 迈出第一步
 
-建议将账号添加到配置文件，这可以避免BDUSS随代码泄露
-
-### 准备工作
-
-在工作目录下新建配置文件`aiotieba.toml`
-
-参考[文档](config.md)将你的BDUSS填写如下
-
-```toml
-[User]
-
-[User.default]
-BDUSS = "..."
-```
+一个非常简单的入门案例
 
 ### 样例代码
 
@@ -122,9 +109,11 @@ import asyncio
 
 import aiotieba as tb
 
+BDUSS = "在这里输入你账号的BDUSS"
+
 
 async def main():
-    async with tb.Client("default") as client:
+    async with tb.Client(BDUSS) as client:
         user = await client.get_self_info()
 
     print(user)
@@ -134,10 +123,51 @@ asyncio.run(main())
 
 ### 期望结果
 
-如果你的`BDUSS`填写无误，你会获得类似下面这样的结果
+如果你的[`BDUSS`](#bduss)填写无误，你会获得类似下面这样的结果
 
 ```log
-Starry_OvO
+AAAA（你的用户名）
+```
+
+## 内容的层次结构
+
+本样例将协助你理解“主题帖-回复-楼中楼”的三级层次结构，以及如何解析富媒体内容
+
+### 样例代码
+
+本样例将逐级获取并打印“主题帖-回复-楼中楼”中各层级的部分内容
+
+```python
+import asyncio
+
+import aiotieba as tb
+
+
+async def main():
+    async with tb.Client() as client:
+        threads = await client.get_threads("天堂鸡汤")
+        for thread in threads[3:6]:
+            print(thread)  # 打印整个主题帖
+            print(thread.contents)  # 打印主题帖中的内容碎片（含富媒体信息）
+            print(thread.contents.emojis)  # 仅打印表情相关的内容碎片
+
+        selected_thread = threads[4]
+        posts = await client.get_posts(selected_thread.tid)
+        for post in posts[3:6]:
+            print(post)  # 打印整个回复
+            print(post.contents)  # 打印回复中的内容碎片
+            print(post.contents.imgs)  # 仅打印图片相关的内容碎片
+
+        for post in posts:
+            if post.reply_num == 0:
+                continue
+            comments = await client.get_comments(post.tid, post.pid)
+            for comment in comments:
+                print(comment)  # 打印整个楼中楼
+                print(comment.contents.ats)  # 仅打印@相关的内容碎片
+                break
+
+asyncio.run(main())
 ```
 
 ## 运行时更改BDUSS
@@ -145,6 +175,8 @@ Starry_OvO
 该案例演示了如何在运行时更改BDUSS
 
 建议为每个账号新建`Client`，以避免误用遗留的websocket连接
+
+同样地，你也可以直接向`Client.account`赋值以动态变更用户参数
 
 ### 样例代码
 
@@ -158,7 +190,7 @@ import aiotieba as tb
 
 async def main():
     async with tb.Client() as client:
-        client.account.BDUSS = '...'
+        client.account.BDUSS = "在这里输入你账号的BDUSS"
         user = await client.get_self_info()
 
     print(user)
@@ -169,29 +201,15 @@ asyncio.run(main())
 
 ### 期望结果
 
-如果你的`BDUSS`填写无误，你会获得类似下面这样的结果
+如果你的[`BDUSS`](#bduss)填写无误，你会获得类似下面这样的结果
 
 ```log
-Starry_OvO
+AAAA（你的用户名）
 ```
 
 ## 多账号
 
-### 准备工作
-
-在`aiotieba.toml`中添加一个新账户，例如：
-
-```toml
-[User]
-
-[User.default]
-BDUSS = "..."
-
-[User.anotherKey]
-BDUSS = "..."
-```
-
-然后你就可以通过输入不同的`BDUSS_key`来使用不同的账号
+如何同时使用多个账号？
 
 ### 样例代码
 
@@ -202,14 +220,15 @@ import asyncio
 
 import aiotieba as tb
 
+BDUSS1 = "在这里输入第一个账号的BDUSS"
+BDUSS2 = "在这里输入第二个账号的BDUSS"
+
 
 async def main():
-    async with tb.Client("default") as client:
-        user = await client.get_self_info()
-        print(f"默认账号: {user}")
-    async with tb.Client("anotherKey") as client:
-        user = await client.get_self_info()
-        print(f"另一个账号: {user}")
+    async with (tb.Client(BDUSS1) as client1, tb.Client(BDUSS2) as client2):
+        user1 = await client1.get_self_info()
+        user2 = await client2.get_self_info()
+        print(f"账号1: {user1}, 账号2: {user2}")
 
 
 asyncio.run(main())
@@ -217,11 +236,51 @@ asyncio.run(main())
 
 ### 期望结果
 
-如果你的`BDUSS`填写无误，你会获得类似下面这样的结果
+如果你的[`BDUSS`](#bduss)填写无误，你会获得类似下面这样的结果
 
 ```log
-默认账号: AAAA
-另一个账号: BBBB
+账号1: AAAA, 账号2: BBBB
+```
+
+## Account的序列化与反序列化
+
+该功能可以用于导出账号参数
+
+### 样例代码
+
+本样例将演示账号参数的导出与导入，并使用导入生成的Account获取用户信息
+
+```python
+import asyncio
+
+import aiotieba as tb
+
+BDUSS = "在这里输入你账号的BDUSS"
+
+
+async def main():
+    account1 = tb.Account(BDUSS)
+    dic = account1.to_dict()
+    print(dic)
+    account2 = tb.Account.from_dict(dic)
+    assert account1.BDUSS == account2.BDUSS
+
+    async with tb.Client(account=account2) as client:
+        user = await client.get_self_info()
+
+    print(user)
+
+
+asyncio.run(main())
+```
+
+### 期望结果
+
+如果你的[`BDUSS`](#bduss)填写无误，你会获得类似下面这样的结果
+
+```log
+{'BDUSS': '...'}
+AAAA（你的用户名）
 ```
 
 ## 简单并发爬虫
@@ -235,9 +294,10 @@ import asyncio
 
 import aiotieba as tb
 
+BDUSS = "在这里输入你账号的BDUSS"
 
 async def main():
-    async with tb.Client("default") as client:
+    async with tb.Client(BDUSS) as client:
         # [1] 什么是`asyncio.gather`？
         # 参考官方文档：并发运行任务
         # https://docs.python.org/zh-cn/3/library/asyncio-task.html#running-tasks-concurrently
@@ -307,12 +367,15 @@ tid: 8204273523 最后回复时间戳: 1672500829 标题: 你如初待我模样
 本样例将通过任务队列实现一个多协程爬虫，快速爬取天堂鸡汤吧的前32页共960条主题帖，并打印其中浏览量最高的10条
 
 ```python
+from __future__ import annotations
+
 import asyncio
 import time
-from typing import List
 
 import aiotieba as tb
 from aiotieba.logging import get_logger as LOG
+
+BDUSS = "在这里输入你账号的BDUSS"
 
 
 async def crawler(fname: str):
@@ -327,10 +390,10 @@ async def crawler(fname: str):
     LOG().info("Spider start")
 
     # thread_list用来保存主题帖列表
-    thread_list: List[tb.typing.Thread] = []
+    thread_list: list[tb.typing.Thread] = []
 
     # 使用键名"default"对应的BDUSS创建客户端
-    async with tb.Client("default") as client:
+    async with tb.Client(BDUSS) as client:
         # asyncio.Queue是一个任务队列
         # maxsize=8意味着缓冲区长度为8
         # 当缓冲区被填满时，调用Queue.put的协程会被阻塞
@@ -388,7 +451,7 @@ async def crawler(fname: str):
         # 因为asyncio.gather只接受协程作为参数，不接受协程列表
         await asyncio.gather(*workers, producer())
 
-    LOG().info(f"Spider complete. Time cost: {time.perf_counter()-start_time:.4f} secs")
+    LOG().info(f"Spider complete. Time cost: {time.perf_counter() - start_time:.4f} secs")
 
     # 按主题帖浏览量降序排序
     thread_list.sort(key=lambda thread: thread.view_num, reverse=True)

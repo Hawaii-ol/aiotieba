@@ -1,18 +1,25 @@
-import datetime
-from typing import Optional
+from __future__ import annotations
+
+import time
+from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import bs4
 import yarl
 
 from ...const import WEB_BASE_HOST
-from ...core import HttpCore
 from ...enums import BawuSearchType
 from ._classdef import Userlogs
 
+if TYPE_CHECKING:
+    import datetime
+
+    from ...core import HttpCore
+
 
 def parse_body(body: bytes) -> Userlogs:
-    soup = bs4.BeautifulSoup(body, 'lxml')
-    bawu_userlogs = Userlogs(soup)
+    soup = bs4.BeautifulSoup(body, "lxml")
+    bawu_userlogs = Userlogs.from_tbdata(soup)
 
     return bawu_userlogs
 
@@ -23,33 +30,48 @@ async def request(
     pn: int,
     search_value: str,
     search_type: BawuSearchType,
-    start_dt: Optional[datetime.datetime],
-    end_dt: Optional[datetime.datetime],
+    start_dt: datetime.datetime | None,
+    end_dt: datetime.datetime | None,
     op_type: int,
 ) -> Userlogs:
     params = [
-        ('word', fname),
-        ('pn', pn),
-        ('ie', 'utf-8'),
+        ("word", fname),
+        ("pn", pn),
+        ("ie", "utf-8"),
     ]
 
     if op_type:
-        params.append(('op_type', op_type))
+        params.append(("op_type", op_type))
 
     if search_value:
+        if search_type == BawuSearchType.USER:
+            search_value = quote(search_value)
+            extend_params = [
+                ("svalue", search_value),
+                ("stype", "post_uname"),
+            ]
+        else:
+            extend_params = [
+                ("svalue", search_value),
+                ("stype", "op_uname"),
+            ]
+        params += extend_params
+
+    if start_dt:
+        begin = int(start_dt.timestamp())
+        if end_dt is None:
+            end = int(time.time())
+        else:
+            end = int(end_dt.timestamp())
         extend_params = [
-            ('svalue', search_value),
-            ('stype', 'post_uname' if search_type == BawuSearchType.USER else 'op_uname'),
-            ('begin', int(start_dt.timestamp())),
-            ('end', int(end_dt.timestamp())),
+            ("end", end),
+            ("begin", begin),
         ]
         params += extend_params
 
     request = http_core.pack_web_get_request(
         yarl.URL.build(scheme="https", host=WEB_BASE_HOST, path="/bawu2/platform/listUserLog"), params
     )
-
-    __log__ = "fname={fname}"  # noqa: F841
 
     body = await http_core.net_core.send_request(request, read_bufsize=16 * 1024)
     return parse_body(body)

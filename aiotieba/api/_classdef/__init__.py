@@ -9,6 +9,7 @@ from .contents import (
     FragLink,
     FragText,
     FragTiebaPlus,
+    FragUnknown,
     TypeFragAt,
     TypeFragEmoji,
     TypeFragImage,
@@ -19,5 +20,4 @@ from .contents import (
     TypeFragTiebaPlus,
 )
 from .user import UserInfo
-from .vimage import VirtualImage
 from .vote import VoteInfo

@@ -1,6 +1,6 @@
 import yarl
 
-from ...const import APP_BASE_HOST, APP_INSECURE_SCHEME, MAIN_VERSION
+from ...const import APP_BASE_HOST, MAIN_VERSION
 from ...core import HttpCore, WsCore
 from ...exception import TiebaServerError
 from ._classdef import Comments
@@ -31,7 +31,7 @@ def parse_body(body: bytes) -> Comments:
         raise TiebaServerError(code, res_proto.error.errmsg)
 
     data_proto = res_proto.data
-    comments = Comments(data_proto)
+    comments = Comments.from_tbdata(data_proto)
 
     return comments
 
@@ -40,11 +40,9 @@ async def request_http(http_core: HttpCore, tid: int, pid: int, pn: int, is_comm
     data = pack_proto(tid, pid, pn, is_comment)
 
     request = http_core.pack_proto_request(
-        yarl.URL.build(scheme=APP_INSECURE_SCHEME, host=APP_BASE_HOST, path="/c/f/pb/floor", query_string=f"cmd={CMD}"),
+        yarl.URL.build(scheme="http", host=APP_BASE_HOST, path="/c/f/pb/floor", query_string=f"cmd={CMD}"),
         data,
     )
-
-    __log__ = "tid={tid} pid={pid}"  # noqa: F841
 
     body = await http_core.net_core.send_request(request, read_bufsize=8 * 1024)
     return parse_body(body)
@@ -52,8 +50,6 @@ async def request_http(http_core: HttpCore, tid: int, pid: int, pn: int, is_comm
 
 async def request_ws(ws_core: WsCore, tid: int, pid: int, pn: int, is_comment: bool) -> Comments:
     data = pack_proto(tid, pid, pn, is_comment)
-
-    __log__ = "tid={tid} pid={pid}"  # noqa: F841
 
     response = await ws_core.send(data, CMD)
     return parse_body(await response.read())

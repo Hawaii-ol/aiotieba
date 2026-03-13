@@ -6,43 +6,37 @@ on:
     paths:
       - "mkdocs.yml"
       - "docs/**"
-      - "aiotieba/__version__.py"
+      - "pyproject.toml"
       - ".github/workflows/Pages*"
   pull_request:
     branches: [develop]
     paths:
       - "mkdocs.yml"
       - "docs/**"
-      - "aiotieba/__version__.py"
+      - "pyproject.toml"
       - ".github/workflows/Pages*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      PYTHON_VER: "3.11"
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Python ${{ env.PYTHON_VER }}
-        uses: actions/setup-python@v4
+        uses: actions/checkout@v6
         with:
-          python-version: ${{ env.PYTHON_VER }}
+          ref: develop
+
+      - name: Setup UV
+        uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
-        run: |
-          pip install -U pip -qq
-          pip install mkdocs-material mkdocstrings[python] -qq
+        run: uv sync --only-dev
 
       - name: Build
-        run: |
-          mkdocs build -d site -s
+        run: uv run mkdocs build -d site
 
       - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
@@ -62,4 +56,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
