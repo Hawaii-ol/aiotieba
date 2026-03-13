@@ -7,13 +7,14 @@ import pathlib
 from typing import Optional, Union, List
 
 import aiotieba as tb
-from aiotieba.config import CONFIG
+from aiotieba.config_old import CONFIG
 from aiotieba.logging import get_logger as LOG
 from aiotieba.typing import Thread, Post, Comment
 from aiotieba.database import FraudTypes, UserInfo
 
 antispammer_url = 'http://127.0.0.1:14930/predict/spam'
 antifraud_url = 'http://127.0.0.1:14930/predict/fraud'
+
 
 class MyReviewer(tb.Reviewer):
     def __init__(self, BDUSS_key: str, fname: str):
@@ -260,7 +261,7 @@ async def main(fname, debug: bool):
     debug模式下，执行8页模拟审查，不会实际删封。
     生产模式下，执行单页循环审查。如果是吧主，还会定期加精+取消加精指定贴子，防止因30天内不活跃而被撤职。
     """
-    async with MyReviewer('default', fname) as reviewer:
+    async with MyReviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         if debug:
             await reviewer.review_debug()
         else:

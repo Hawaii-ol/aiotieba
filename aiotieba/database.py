@@ -7,7 +7,7 @@ from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
 import aiomysql
 
-from .config import CONFIG
+from .config_old import CONFIG
 from .logging import get_logger as LOG
 from .api._classdef import UserInfo
 
