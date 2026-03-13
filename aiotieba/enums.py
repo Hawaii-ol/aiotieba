@@ -82,7 +82,7 @@ class ThreadSortType(enum.IntEnum):
         对于无热门分区的贴吧 0按回复时间(REPLY) 1按发布时间(CREATE) 2关注的人(FOLLOW) >=3按回复时间(REPLY)
     """
 
-    REPLY = 5
+    REPLY = 6
     CREATE = 1
     HOT = 3
     FOLLOW = 2
