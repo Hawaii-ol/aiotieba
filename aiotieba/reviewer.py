@@ -15,7 +15,7 @@ from typing import List, Literal, Optional, Tuple, Union
 
 from .logging import get_logger as LOG
 from .client import Client
-from .enums import ReqUInfo
+from .enums import ReqUInfo, ThreadSortType
 from .helper.cache import ForumInfoCache
 from .typing import Comment, Comments, Post, Posts, Thread, Threads, TypeUserInfo
 from .database import MySQLDB, SQLiteDB
@@ -159,7 +159,7 @@ class BaseReviewer(object):
         pn: int = 1,
         *,
         rn: int = 30,
-        sort: int = 5,
+        sort: ThreadSortType = ThreadSortType.REPLY,
         is_good: bool = False,
     ) -> Threads:
         """
@@ -168,8 +168,8 @@ class BaseReviewer(object):
         Args:
             pn (int, optional): 页码. Defaults to 1.
             rn (int, optional): 请求的条目数. Defaults to 30.
-            sort (int, optional): 排序方式 对于有热门分区的贴吧0是热门排序1是按发布时间2报错34都是热门排序>=5是按回复时间
-                对于无热门分区的贴吧0是按回复时间1是按发布时间2报错>=3是按回复时间. Defaults to 5.
+            sort (int, optional): 排序方式 对于有热门分区的贴吧0是热门排序1是按发布时间2报错34都是热门排序>=6是按回复时间
+                对于无热门分区的贴吧0是按回复时间1是按发布时间2报错>=3是按回复时间. Defaults to 6.
             is_good (bool, optional): True为获取精品区帖子 False为获取普通区帖子. Defaults to False.
 
         Returns:
