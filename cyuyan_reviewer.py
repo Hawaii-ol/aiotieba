@@ -194,7 +194,11 @@ class MyReviewer(tb.Reviewer):
         """检查违规图片"""
         punish = False
         for img_content in obj.contents.imgs:
-            img = await self.client.get_image(img_content.origin_src)
+            maybe_img = await self.client.get_image(img_content.origin_src)
+            if maybe_img.err:
+                LOG().error(f'Failed to fetch image url {img_content.origin_src}: error: {maybe_img.err}')
+                continue
+            img = maybe_img.img
             if img.size == 0:
                 continue
             # 检测二维码
