@@ -808,10 +808,10 @@ class Reviewer(BaseReviewer):
         """
 
         posts = await self.get_posts(thread.tid, pn=99999, sort=1, with_comments=True)
-        posts = set(posts._objs)
+        posts = set(posts.objs)
         if thread.reply_num > 30:
             first_posts = await self.get_posts(thread.tid, with_comments=True)
-            posts.update(first_posts._objs)
+            posts.update(first_posts.objs)
 
         return posts
 
