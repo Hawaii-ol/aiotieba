@@ -3,6 +3,7 @@ import __init__
 import asyncio
 import aiotieba
 import argparse
+from aiotieba.config_old import CONFIG
 from cyuyan_reviewer import MyReviewer, FraudTypes
 
 async def main(fname, credential, cred_type=None):
@@ -40,7 +41,7 @@ async def main(fname, credential, cred_type=None):
             user = await client.get_user_info(credential)
         print_uinfo(user)
     
-    async with MyReviewer('default', fname) as reviewer:
+    async with MyReviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         uc = await reviewer.db.get_user_credit(user)
         print('=' * 50)
         if uc:

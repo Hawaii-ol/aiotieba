@@ -3,6 +3,7 @@ import __init__
 import asyncio
 import argparse
 import aiotieba as tb
+from aiotieba.config_old import CONFIG
 from cyuyan_reviewer import FraudTypes, MyReviewer
 
 
@@ -33,7 +34,7 @@ async def main(fname, credential, cred_type=None):
             print(f"{cred_type} must be an integer, not '{credential}'.")
             exit(1)
     
-    async with MyReviewer('default', fname) as reviewer:
+    async with MyReviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         if cred_type == 'tieba_uid':
             user = await reviewer.client.tieba_uid2user_info(credential)
         else:

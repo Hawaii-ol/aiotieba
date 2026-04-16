@@ -4,9 +4,10 @@ import time
 import asyncio
 import argparse
 import aiotieba as tb
+from aiotieba.config_old import CONFIG
 
 async def recover_tid(fname, tid, unhide=False):
-    async with tb.Reviewer('default', fname) as reviewer:
+    async with tb.Reviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         if unhide:
             await reviewer.client.unhide_thread(fname, tid)
         else:

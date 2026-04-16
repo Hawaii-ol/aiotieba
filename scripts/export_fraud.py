@@ -5,12 +5,13 @@ import logging
 import pathlib
 import re
 from aiotieba.logging import get_logger as LOG
+from aiotieba.config_old import CONFIG
 from cyuyan_reviewer import MyReviewer, FraudTypes
 
 async def print_frauds(fname):
     frauds = []
     frauds_feat = [] # 特征检测账号
-    async with MyReviewer('default', fname) as reviewer:
+    async with MyReviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         feat_id_pattern = re.compile(r'^(1722|1783)\d{6}$')
         for uc in await reviewer.db.list_user_credits():
             if uc.fraud_type == FraudTypes.CONFIRMED_FRAUD:

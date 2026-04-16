@@ -3,11 +3,12 @@
 import __init__
 import asyncio
 import aiotieba as tb
+from aiotieba.config_old import CONFIG
 from cyuyan_reviewer import FraudTypes, MyReviewer
 
 async def main(fname):
     tb.logging.enable_filelog()
-    async with MyReviewer('default', fname) as reviewer:
+    async with MyReviewer(CONFIG['User']['BDUSS'], fname) as reviewer:
         if not reviewer.is_bazhu:
             print('贴吧黑名单功能需要吧主权限。')
             exit(0)
